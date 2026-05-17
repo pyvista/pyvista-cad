@@ -44,7 +44,7 @@ def flange() -> b3d.Part:
 
 
 part = flange()
-naive = pyvista_cad.from_build123d(part).extract_surface()
+naive = pyvista_cad.from_build123d(part).extract_surface(algorithm='dataset_surface')
 
 # Look down onto the hub and into the bore so the curved walls read
 # clearly: triangle facets on the left, topological circles on the right.
