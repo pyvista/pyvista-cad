@@ -1,0 +1,138 @@
+# Test fixture corpus
+
+Real CAD files produced by third-party libraries (OCP/OCCT, ezdxf, lib3mf,
+ifcopenshell), never by pyvista-cad's own writers. Reader and round-trip
+tests read these and assert the exact values recorded below.
+
+## Regeneration
+
+```
+uv run python tests/data/_generate_fixtures.py
+```
+
+The generator is deterministic. Re-running produces byte-identical files
+(STEP/IGES/IFC header timestamps and a few library-stamped GUID/date
+fields are normalised in-place). It also re-reads every fixture through
+the matching `pyvista_cad` reader and prints the numbers below; if you
+change a fixture, rerun and update this table from the printed output.
+
+All fixtures are small (largest is ~23 KB) and committed alongside the
+generator.
+
+## Fixtures
+
+### `assembly_two_parts.step` (22619 bytes)
+
+A real STEP assembly written via `STEPCAFControl_Writer` + an OCAF
+document, one product per component, joined by a
+`NEXT_ASSEMBLY_USAGE_OCCURRENCE` hierarchy. Verified on re-read to expose
+two named products, `Base` and `Pin`.
+
+- Reads as a `MultiBlock`, `n_blocks=2`.
+- Combined bounds: `(0.0, 30.0, 0.0, 20.0, 0.0, 35.0)`.
+- `cad.units = 'mm'`, `cad.backend = 'build123d'`,
+  `cad.source_format = 'step'`, `cad.reader = 'pyvista_cad.read_step'`.
+
+| block | name   | `cad.label` | n_cells | bounds                                          |
+| ----- | ------ | ----------- | ------- | ----------------------------------------------- |
+| 0     | `Base` | `Base`      | 12      | `(0.0, 30.0, 0.0, 20.0, 0.0, 10.0)`             |
+| 1     | `Pin`  | `Pin`       | 100     | `(11.0, 19.0, 6.029165, 13.970835, 10.0, 35.0)` |
+
+`Base` is a 30x20x10 mm box (identity component transform). `Pin` is a
+radius-4 mm, height-25 mm cylinder added with a `(15, 10, 10)` component
+transform; the bounds above are what the tessellated re-read produces and
+are what tests should assert.
+
+### `dxf_r12.dxf` (5758 bytes) and `dxf_r2018.dxf` (16585 bytes)
+
+ezdxf documents in the R12 and R2018 DXF versions. Each carries a `LINE`
+`(0,0)->(100,0)` and a closed square `(0,0)->(50,0)->(50,50)->(0,50)` on
+layer `GEOM`, a `CIRCLE` centre `(75,25)` radius 10 and one `INSERT` of
+block `MARKER` (a cross) on layer `DETAIL`. R12 uses a `POLYLINE` for the
+square (R12 predates `LWPOLYLINE`); R2018 uses `LWPOLYLINE`.
+
+Both read as a single `PolyData`:
+
+- `n_cells = 5`, `n_points = 81`.
+- bounds `(0.0, 100.0, 0.0, 50.0, 0.0, 0.0)`.
+- `cad.backend = 'ezdxf'`, `cad.source_format = 'dxf'`,
+  `cad.reader = 'pyvista_cad.read_dxf'`.
+- `cad.units`: `'mm'` for R2018, `'unitless'` for R12 (the R12 DXF format
+  does not persist `$INSUNITS`).
+
+Byte stability: `$TDCREATE`/`$TDUPDATE`/`$TDINDWG`/`$TDUSRTIMER`, the
+ezdxf version/timestamp AppData, and (R2018) the document GUIDs and the
+CLASSES-section ordering are all normalised by the generator.
+
+### `multimaterial.3mf` (1397 bytes)
+
+A lib3mf model with two mesh objects and a `BaseMaterialGroup` carrying
+one material per object, assigned as the object-level property.
+
+- Reads as a `MultiBlock`, `n_blocks=2`, combined bounds
+  `(0.0, 30.0, 0.0, 10.0, 0.0, 10.0)`.
+- `cad.units = 'mm'`, `cad.backend = 'lib3mf'`,
+  `cad.source_format = '3mf'`.
+
+| block | name    | n_cells | bounds                               | material (RGBA, via lib3mf)  |
+| ----- | ------- | ------- | ------------------------------------ | ---------------------------- |
+| 0     | `CubeA` | 12      | `(0.0, 10.0, 0.0, 10.0, 0.0, 10.0)`  | `RedMat` `(255, 0, 0, 255)`  |
+| 1     | `CubeB` | 12      | `(20.0, 30.0, 0.0, 10.0, 0.0, 10.0)` | `BlueMat` `(0, 0, 255, 255)` |
+
+Both objects are 10 mm cubes. The current 3MF reader does not surface the
+BaseMaterialGroup colour as `cad.color`; assert the material colours
+directly through lib3mf, not via `cad.color`.
+
+### `building.ifc` (2098 bytes)
+
+An IFC4 file: `IfcProject` -> `IfcSite` -> `IfcBuilding` ->
+`IfcBuildingStorey` containing one extruded `IfcWall`. The wall carries a
+diffuse `IfcSurfaceStyleRendering` / `IfcStyledItem` with `IfcColourRgb`
+`(0.8, 0.3, 0.2)`.
+
+- Reads as a nested `MultiBlock` (top `n_blocks=1`, block `Site` is itself
+  a `MultiBlock` of `n_blocks=1` holding the wall).
+- Combined bounds `(0.0, 4.0, 0.0, 0.2, 0.0, 3.0)` (metres).
+- `cad.units = 'm'`, `cad.backend = 'ifcopenshell'`,
+  `cad.source_format = 'ifc'`.
+- Deterministic wall `GlobalId`: `0eCpv9L5zgTO2Bbg6ijyBD`.
+- `IfcColourRgb` in the file: exactly one, `(0.8, 0.3, 0.2)`; the single
+  `IfcSurfaceStyle` is named `WallColour`.
+
+The authored colour is verifiably present in the file (assert via
+ifcopenshell `IfcColourRgb`, or via `ifcopenshell.geom` material
+`diffuse`, which reports `colour 0.8 0.3 0.2`). The current IFC reader has
+a bug handling ifcopenshell's `colour` object, so it may not surface as
+`cad.color`; that is a reader defect, not a fixture defect.
+
+Byte stability: the `FILE_NAME` header timestamp and the
+`IFCUNITASSIGNMENT` member ordering are normalised; all GUIDs are
+generated by a deterministic sequential factory.
+
+### `impeller.iges` (7452 bytes)
+
+A B-spline surface hub (radius 12 mm, height 20 mm, swept a full turn)
+plus three B-spline blade surfaces polar-arrayed at 0, 120, 240 degrees,
+written via `IGESControl_Writer` as rational B-spline surface entities
+(IGES type 128). Non-trivial curved geometry that pyiges tessellates
+through the default reader path (`surfaces=True`, `bsplines=True`).
+
+- Reads as a single `PolyData`.
+- `n_cells = 12168`, `n_points = 6400`.
+- bounds `(-25.246551, 28.0, -28.000005, 24.248711, 0.0, 20.0)`.
+- `cad.backend = 'pyiges'`, `cad.source_format = 'iges'`.
+
+Byte stability: the IGES global-section date fields are normalised to a
+fixed value.
+
+### `external.brep` (3370 bytes)
+
+A build123d box 25 x 15 x 8 mm written via `BRepTools.Write_s` (OCCT
+ASCII BREP, no timestamp, byte-identical on every run). Counts as
+externally produced because it does not pass through pyvista-cad's writer.
+
+- Reads as a single `PolyData`.
+- `n_cells = 12`, `n_points = 24`.
+- bounds `(-12.5, 12.5, -7.5, 7.5, -4.0, 4.0)` (build123d `Box` is
+  centred on the origin).
+- `cad.backend = 'ocp'`, `cad.source_format = 'brep'`.

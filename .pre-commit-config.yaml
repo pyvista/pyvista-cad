@@ -1,0 +1,79 @@
+ci:
+  autoupdate_schedule: monthly
+
+# CAD/mesh fixtures are opaque binary-ish payloads. Whitespace,
+# end-of-file, line-ending, and spell hooks must never rewrite them.
+exclude: |
+  (?x)^(
+    .*\.(step|stp|dxf|brep|iges|igs|3mf|ifc|scad|glb|gltf|stl|obj|ply|vtk|vtu|vtp)
+  )$
+
+repos:
+  - repo: https://github.com/numpy/numpydoc
+    rev: v1.10.0
+    hooks:
+      - id: numpydoc-validation
+        files: ^src/pyvista_cad/
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb, "5000"]
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: trailing-whitespace
+      - id: check-docstring-first
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1
+    hooks:
+      - id: ruff-format
+      - id: ruff-check
+        args: ["--fix", "--show-fixes"]
+
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.8.1
+    hooks:
+      - id: prettier
+        types_or: [yaml, markdown, json]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.36.1
+    hooks:
+      - id: check-github-workflows
+
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v9.2.0
+    hooks:
+      - id: cspell
+        # cspell-cli v9 needs Node >=20.18; pin so the hook does not
+        # fall back to whatever Node is on PATH (system Node may be 18).
+        language_version: "22.22.1"
+        args: ["--no-progress", "--no-summary"]
+
+  - repo: local
+    hooks:
+      - id: format-justfile
+        name: Format justfile
+        entry: just --fmt --unstable
+        language: system
+        files: "(^|/)justfile$|\\.just$"
+        pass_filenames: false

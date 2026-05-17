@@ -1,0 +1,19 @@
+# CAD / mesh fixtures are opaque payloads. Treat them as binary so git
+# never does EOL conversion, diff, or merge text munging on them.
+*.step binary
+*.stp binary
+*.dxf binary
+*.brep binary
+*.iges binary
+*.igs binary
+*.3mf binary
+*.ifc binary
+*.scad binary
+*.glb binary
+*.gltf binary
+*.stl binary
+*.obj binary
+*.ply binary
+*.vtk binary
+*.vtu binary
+*.vtp binary
