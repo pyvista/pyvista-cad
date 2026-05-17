@@ -1,0 +1,323 @@
+[build-system]
+build-backend = 'setuptools.build_meta'
+requires = ['setuptools>=77.0', 'setuptools_scm>=8']
+
+[project]
+name = 'pyvista-cad'
+dynamic = ['version']
+description = 'PyVista accessor and reader-registry plugin for CAD formats — STEP, IGES, BREP, DXF, 3MF, IFC, FCStd, and bridges to build123d, cadquery, OCP, and gmsh.'
+readme = 'README.md'
+license = 'MIT'
+requires-python = '>=3.10'
+authors = [{ name = 'The PyVista Developers', email = 'info@pyvista.org' }]
+classifiers = [
+  'Development Status :: 3 - Alpha',
+  'Intended Audience :: Developers',
+  'Intended Audience :: Science/Research',
+  'Operating System :: MacOS',
+  'Operating System :: POSIX :: Linux',
+  'Operating System :: Microsoft :: Windows',
+  'Programming Language :: Python :: 3',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
+  'Programming Language :: Python :: 3.13',
+  'Programming Language :: Python :: 3.14',
+  'Topic :: Scientific/Engineering :: Visualization',
+  'Topic :: Multimedia :: Graphics :: 3D Modeling',
+  'Topic :: Scientific/Engineering :: Information Analysis',
+  'Typing :: Typed',
+]
+keywords = [
+  '3d',
+  'pyvista',
+  'cad',
+  'step',
+  'iges',
+  'brep',
+  'dxf',
+  '3mf',
+  'ifc',
+  'build123d',
+  'cadquery',
+  'opencascade',
+]
+
+dependencies = ['ezdxf>=1.3', 'numpy>=1.24', 'pooch>=1.8', 'pyvista>=0.48.4']
+
+[project.optional-dependencies]
+step = ['build123d>=0.7']
+step-light = ['cascadio>=0.0.17']
+# Canonical 3MF extra name is '3mf' (PEP 503 normalizes it; the
+# pytest marker is `three_mf`, the install hint in
+# _backends/_lib3mf.py uses `pyvista-cad[3mf]`).
+'3mf' = ['lib3mf>=2.3']
+ifc = ['ifcopenshell>=0.7.0']
+iges = ['pyiges[full]>=0.3']
+gmsh = ['gmsh>=4.13']
+cadquery = ['cadquery>=2.4']
+trimesh = ['pyvista-trimesh>=0.1']
+# OpenSCAD support shells out to the `openscad` command-line binary and
+# imports no Python dependency, so there is no installable extra for it
+# (an empty extra would install nothing and falsely imply pip can
+# satisfy the requirement). Install the `openscad` binary via the system
+# package manager instead.
+full = ['pyvista-cad[step,3mf,iges,ifc,gmsh,cadquery,trimesh]']
+
+docs = [
+  'pyvista-cad[full]',
+  'cadquery>=2.4',
+  'pandas>=2.0',
+  'sphinx>=8.0',
+  'sphinx-gallery>=0.18',
+  'sphinx-design>=0.6',
+  'sphinx-copybutton>=0.5',
+  'sphinx-book-theme>=1.1',
+  'myst-parser>=4.0',
+  'sphinx-notfound-page>=1.1',
+  'numpydoc>=1.10',
+  'pypandoc>=1.13',
+  # Full jupyter/trame stack: DynamicScraper + viewer_directive need
+  # trame + trame-vtk + trame-vuetify to emit interactive .vtksz scenes
+  # (trame-vtk alone silently falls back to static images).
+  'pyvista[jupyter]',
+]
+dev = [
+  'pyvista-cad[docs]',
+  # uv.lock is intentionally not committed (library), so the linter and
+  # type-checker are pinned exactly: their patch/minor releases change
+  # diagnostics and would flake CI against a green local tree.
+  'mypy==2.1.0',
+  'ruff==0.15.13',
+  'pytest>=8.0',
+  'pytest-benchmark>=4.0',
+  'pytest-cov>=5.0',
+  'pytest-pyvista>=0.2',
+  'hypothesis>=6.100',
+]
+
+# pyvista discovers plugin readers only through this entry-point group
+# (pyvista.core.utilities.reader_registry._ensure_entry_points). Each
+# value is a ``module:function`` that pyvista loads lazily on the first
+# ``pv.read('file.ext')`` for that extension and calls as
+# ``handler(path, **kwargs) -> DataSet``. Declaring them here makes a
+# bare ``import pyvista_cad`` (or no import at all) wire up dispatch
+# without eagerly importing any reader submodule.
+[project.entry-points.'pyvista.readers']
+step = 'pyvista_cad._readers.step:read_step'
+stp = 'pyvista_cad._readers.step:read_step'
+# .iges / .igs are deliberately absent: pyiges also ships a
+# pyvista.readers entry point for them and cross-distribution
+# entry-point ordering is undefined, so a metadata-aware IGES reader is
+# instead registered eagerly (and deterministically) in
+# pyvista_cad/__init__.py with override=True.
+brep = 'pyvista_cad._readers.brep:read_brep'
+brp = 'pyvista_cad._readers.brep:read_brep'
+dxf = 'pyvista_cad._readers.dxf:read_dxf'
+'3mf' = 'pyvista_cad._readers.three_mf:read_three_mf'
+ifc = 'pyvista_cad._readers.ifc:read_ifc'
+fcstd = 'pyvista_cad._readers.fcstd:read_fcstd'
+scad = 'pyvista_cad._readers.scad:read_scad'
+# .gltf / .glb override pyvista's built-in VTK glTF reader to add
+# manifest metadata. Overriding a built-in requires eager registration
+# with override=True (entry points cannot), so these are registered in
+# pyvista_cad/__init__.py alongside IGES. read_gltf_internal reads via
+# pyvista.GLTFReader directly, so the registration does not recurse.
+
+[project.entry-points.'pyvista.accessors']
+cad = 'pyvista_cad._accessor'
+
+[project.entry-points.'pyvista.plotter_components']
+cad = 'pyvista_cad._cad_view'
+
+[project.urls]
+Homepage = 'https://github.com/pyvista/pyvista-cad'
+Documentation = 'https://pyvista.github.io/pyvista-cad/'
+Issues = 'https://github.com/pyvista/pyvista-cad/issues'
+Repository = 'https://github.com/pyvista/pyvista-cad'
+
+[tool.uv]
+override-dependencies = ['cadquery-ocp>=7.9', 'vtk>=9.4']
+
+[tool.coverage.run]
+branch = true
+source = ['pyvista_cad']
+# `examples/_generate.py` is a build-time fixture generator (it authors the
+# bundled `examples/data/*` artifacts and is never imported on the user
+# runtime path); excluded so the coverage denominator reflects shipped API.
+omit = ['*/examples/_generate.py']
+
+[tool.coverage.report]
+# `fail_under` stays 0 here because each extras combination exercises a
+# different code subset, so a single per-matrix threshold cannot apply
+# uniformly. The real coverage contract (100% on _conversion/_metadata/
+# _accessor/_errors, >=90% on the rest excluding _backends) is enforced
+# executably by tests/test_coverage_contract.py on the full-extras cell.
+fail_under = 0
+exclude_lines = [
+  'pragma: no cover',
+  'if TYPE_CHECKING:',
+  'if __name__',
+  '\.\.\.',
+]
+
+[tool.pytest.ini_options]
+addopts = '-v --ignore=tests/perf'
+filterwarnings = [
+  'error',
+  'ignore:pyvista test.*does not yet exist:UserWarning',
+  'ignore::pyparsing.warnings.PyparsingDeprecationWarning',
+  'ignore::DeprecationWarning:ezdxf',
+  'ignore::DeprecationWarning:pyparsing',
+  'ignore::DeprecationWarning:build123d',
+]
+testpaths = ['tests']
+xfail_strict = true
+image_cache_dir = 'tests/image_cache'
+markers = [
+  'step: requires the [step] extra (build123d + cadquery-ocp)',
+  'step_light: requires the [step-light] extra (cascadio)',
+  'three_mf: requires the [3mf] extra (lib3mf direct) or [step] (Mesher)',
+  'ifc: requires the [ifc] extra (ifcopenshell)',
+  'iges: requires the [iges] extra (pyiges)',
+  'gmsh: requires the [gmsh] extra',
+  'freecad: requires FreeCAD installed as a system package',
+  'compose: cross-package integration test (requires .manifold and/or .trimesh installed)',
+  'benchmark: performance regression test (skipped by default unless --benchmark-only)',
+]
+
+[tool.ruff]
+line-length = 99
+src = ['src']
+extend-exclude = ['src/pyvista_cad/_version.py']
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 75
+quote-style = 'single'
+
+[tool.ruff.lint]
+ignore = ['D107']
+extend-select = [
+  'A',
+  'B',
+  'C4',
+  'D',
+  'E',
+  'EM',
+  'F',
+  'FLY',
+  'I',
+  'ICN',
+  'N',
+  'PERF',
+  'PGH',
+  'PIE',
+  'PLC0415',
+  'PT',
+  'RET',
+  'RSE',
+  'RUF',
+  'SIM',
+  'T10',
+  'T20',
+  'TCH',
+  'TID',
+  'UP',
+  'W',
+  'YTT',
+]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+'vtk'.msg = 'Use PyVista APIs instead of direct VTK imports.'
+'vtkmodules'.msg = 'Use PyVista APIs instead of direct VTK imports.'
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+'__init__.py' = ['E402', 'PLC0414']
+'__init__.pyi' = ['D']
+'tests/**' = ['D', 'S101', 'T20', 'TC003']
+'tests/perf/**' = ['D', 'S101', 'T20', 'TC003', 'PLC0415']
+'tests/test_lazy_imports.py' = ['D', 'S101', 'T20', 'TC003', 'PLC0415']
+'tests/data/_generate_fixtures.py' = ['D', 'S101', 'T20', 'TC003', 'PLC0415']
+'doc/**' = ['INP001', 'D']
+'examples/**' = [
+  'D',
+  'B015',
+  'B018',
+  'B905',
+  'C408',
+  'E501',
+  'F821',
+  'PLC0415',
+  'T20',
+  'INP001',
+]
+'assets/**' = ['T20', 'INP001']
+'src/pyvista_cad/_backends/**' = ['PLC0415']
+'src/pyvista_cad/_bridges/**' = ['PLC0415']
+'src/pyvista_cad/_readers/**' = ['PLC0415']
+'src/pyvista_cad/_conversion.py' = ['PLC0415']
+'src/pyvista_cad/_cad_view.py' = ['PLC0415']
+'src/pyvista_cad/_accessor.py' = ['PLC0415']
+'src/pyvista_cad/examples/_generate.py' = ['PLC0415', 'T201']
+'tests/test_readers/test_ifc.py' = ['PLC0415']
+'tests/test_readers/test_fcstd.py' = ['PLC0415']
+'tests/test_cad_view.py' = ['PLC0415']
+'tests/test_image_regression.py' = ['PLC0415']
+'tests/test_readers/test_iges.py' = ['PLC0415']
+'tests/test_conversion.py' = ['PLC0415']
+'src/pyvista_cad/__init__.py' = [
+  'E402',
+  'PLC0414',
+  'ANN001',
+  'ANN201',
+  'PLC0415',
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = 'numpy'
+
+[tool.numpydoc_validation]
+checks = [
+  'all',
+  'ES01',
+  'EX01',
+  'GL01',
+  'GL02',
+  'GL03',
+  'GL08',
+  'PR01',
+  'PR02',
+  'PR03',
+  'PR04',
+  'PR05',
+  'PR06',
+  'PR07',
+  'PR08',
+  'PR09',
+  'PR10',
+  'RT02',
+  'SA01',
+  'SA04',
+  'YD01',
+]
+exclude = ['\._.*$']
+
+[tool.mypy]
+python_version = '3.10'
+ignore_missing_imports = true
+
+[tool.setuptools.package-data]
+pyvista_cad = ['py.typed', '__init__.pyi', 'examples/data/*']
+
+[tool.setuptools.packages.find]
+where = ['src']
+include = ['pyvista_cad*']
+
+[tool.setuptools_scm]
+write_to = 'src/pyvista_cad/_version.py'
+version_scheme = 'release-branch-semver'

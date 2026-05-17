@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src/pyvista_cad
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # `dev,full` carries `step-light` (cascadio) so the cascadio STEP
+        # backend E2E runs in CI; `openscad` is installed via apt on Linux
+        # so the SCAD reader E2E runs there too. One combination gaining
+        # these is enough — the matrix shape is unchanged.
+        extras: ["dev", "dev,step", "dev,full,step-light"]
+        exclude:
+          - os: windows-latest
+            extras: "dev,full,step-light"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Set up headless display
+        uses: pyvista/setup-headless-display-action@v4
+      - name: Install system packages for OCCT / gmsh backends
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dev libglu1 libxft2 libxcursor-dev libxinerama1 \
+            libocct-data-exchange-dev libocct-foundation-dev xvfb openscad
+      - name: Install dependencies
+        run: uv sync --extra ${{ matrix.extras }}
+      - name: Run tests
+        run: uv run pytest tests/ --cov --cov-report=xml -v
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' && matrix.extras == 'dev,full,step-light'
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+      - name: Upload image-cache failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-cache-failures-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.extras }}
+          path: tests/image_cache_failures/
+          if-no-files-found: ignore
+
+  lazy-imports:
+    # Mission goal #4: `import pyvista_cad` must not import build123d,
+    # cascadio, OCP, lib3mf, ifcopenshell, gmsh, FreeCAD, pyiges, geomdl.
+    # This job installs ONLY the core package (DXF-only via ezdxf) so a
+    # leaked import would actually be detectable (modules aren't on the
+    # path, ImportError would surface). The matrix-`test` job above runs
+    # with `[full]` and so cannot enforce this invariant.
+    name: Lazy-imports guardrail (minimal extras)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: Install minimal (core + pytest only, no optional backends)
+        # pytest-pyvista is a test plugin (not a CAD backend); it owns
+        # the `image_cache_dir` pytest ini option, so omitting it makes
+        # pytest fail at config time with strict-warnings enabled.
+        run: |
+          uv venv
+          uv pip install -e . pytest pytest-pyvista
+      - name: Run lazy-imports guardrail
+        run: uv run pytest tests/test_lazy_imports.py -v
+
+  benchmark:
+    # Ubuntu-only because cross-platform timing is noisy. The first
+    # green run on `main` establishes the baseline; the 5% regression
+    # gate lands in a follow-up once `bench.json` has been compared
+    # across at least two runs.
+    name: Benchmark (perf regression gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - uses: pyvista/setup-headless-display-action@v4
+      - name: Install [dev,full] for end-to-end perf cases
+        run: uv sync --extra dev --extra full
+      - name: Run benchmarks
+        run: |
+          uv run pytest tests/perf/ \
+            --benchmark-only \
+            --benchmark-json=bench.json \
+            -v
+      - name: Upload benchmark JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-json
+          path: bench.json
+          if-no-files-found: error
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    environment: release
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+
+# uv lockfile (library: resolve fresh, do not pin)
+uv.lock
+
+# Testing / coverage / benchmarks
+.coverage
+.pytest_cache/
+.benchmarks/
+.hypothesis/
+htmlcov/
+coverage.xml
+
+# Type checking / linting
+.mypy_cache/
+.ruff_cache/
+
+# Profiling
+*.prof
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Agent / local tooling
+.claude/
+
+# Local-only notes, design docs, audits, benchmarks (not published)
+notes/
+
+# setuptools_scm-generated version file
+src/pyvista_cad/_version.py
+
+# Local env
+.env
+
+# pytest-pyvista regression failures
+tests/image_cache_failures/
+
+# Sphinx + Sphinx Gallery build artifacts
+doc/_build/
+doc/examples/
+doc/sg_execution_times.rst
+doc/api/_autosummary/
+doc/api/_backrefs/
+errors.txt
