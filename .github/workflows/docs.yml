@@ -77,5 +77,11 @@ jobs:
         with:
           python-version: "3.13"
       - uses: pyvista/setup-headless-display-action@v4
+      - name: Install system packages for OCCT-backed examples
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dev libglu1 libxft2 libxcursor-dev libxinerama1 \
+            libocct-data-exchange-dev libocct-foundation-dev xvfb pandoc openscad
       - run: uv sync --extra docs
       - run: uv run make -C doc doctest
