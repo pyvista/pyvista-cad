@@ -24,7 +24,7 @@ def layered_polydata() -> pv.PolyData:
 
 
 @pytest.mark.benchmark
-def test_split_by_layer_scaling(benchmark, layered_polydata: pv.PolyData) -> None:
+def test_split_by_layer_scaling(benchmark, perf_budget, layered_polydata: pv.PolyData) -> None:
     """``.cad.split_by_layer()`` p50 must stay under 200 ms."""
     import pyvista_cad  # noqa: F401  (registers the .cad accessor)
 
@@ -36,4 +36,4 @@ def test_split_by_layer_scaling(benchmark, layered_polydata: pv.PolyData) -> Non
     p50 = benchmark.stats['median']
     # 300 ms ceiling: shared GitHub runners are ~1.5x noisier than local;
     # this stays a regression tripwire without flaking on CI variance.
-    assert p50 < 0.3, f'split_by_layer p50 {p50 * 1e3:.1f} ms exceeds 300 ms budget'
+    perf_budget(p50 < 0.3, f'split_by_layer p50 {p50 * 1e3:.1f} ms exceeds 300 ms budget')

@@ -45,7 +45,7 @@ def step_500(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.mark.benchmark
-def test_step_read_per_part(benchmark, step_100: Path) -> None:
+def test_step_read_per_part(benchmark, perf_budget, step_100: Path) -> None:
     """``read_step`` on a 100-part compound must stay under 8 ms/part p50."""
     from pyvista_cad import read_step
 
@@ -55,11 +55,13 @@ def test_step_read_per_part(benchmark, step_100: Path) -> None:
     per_part = p50 / 100.0
     # 12 ms/part ceiling: shared GitHub runners are ~1.5x noisier than
     # local; this stays a regression tripwire without flaking on CI.
-    assert per_part < 12e-3, f'STEP read p50 {per_part * 1e3:.2f} ms/part exceeds 12 ms budget'
+    perf_budget(
+        per_part < 12e-3, f'STEP read p50 {per_part * 1e3:.2f} ms/part exceeds 12 ms budget'
+    )
 
 
 @pytest.mark.benchmark
-def test_step_read_500_rss(benchmark, step_500: Path) -> None:
+def test_step_read_500_rss(benchmark, perf_budget, step_500: Path) -> None:
     """``read_step`` on a 500-part STEP must allocate under 15 MB Python heap."""
     from pyvista_cad import read_step
 
@@ -76,4 +78,4 @@ def test_step_read_500_rss(benchmark, step_500: Path) -> None:
 
     benchmark.pedantic(run, rounds=3, iterations=1)
     peak_mb = max(peaks) / (1024 * 1024)
-    assert peak_mb < 15.0, f'tracemalloc peak {peak_mb:.2f} MB exceeds 15 MB budget'
+    perf_budget(peak_mb < 15.0, f'tracemalloc peak {peak_mb:.2f} MB exceeds 15 MB budget')

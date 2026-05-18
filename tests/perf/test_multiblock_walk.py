@@ -22,7 +22,7 @@ def deep_multiblock() -> pv.MultiBlock:
 
 
 @pytest.mark.benchmark
-def test_multiblock_walk_deep(benchmark, deep_multiblock: pv.MultiBlock) -> None:
+def test_multiblock_walk_deep(benchmark, perf_budget, deep_multiblock: pv.MultiBlock) -> None:
     """``.cad.walk()`` over a 10-deep tree must stay under 12 ms p50.
 
     Budget rationale: 2046 blocks * 2.6 us per ``vtkInformation.Get`` is a
@@ -40,4 +40,4 @@ def test_multiblock_walk_deep(benchmark, deep_multiblock: pv.MultiBlock) -> None
     p50 = benchmark.stats['median']
     # 20 ms ceiling: shared GitHub runners are ~1.5x noisier than local;
     # this stays a regression tripwire without flaking on CI variance.
-    assert p50 < 20e-3, f'multiblock walk p50 {p50 * 1e3:.2f} ms exceeds 20 ms budget'
+    perf_budget(p50 < 20e-3, f'multiblock walk p50 {p50 * 1e3:.2f} ms exceeds 20 ms budget')

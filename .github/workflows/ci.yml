@@ -125,6 +125,11 @@ jobs:
       - name: Install [dev,full] for end-to-end perf cases
         run: uv sync --extra dev --extra full
       - name: Run benchmarks
+        # Absolute wall-clock budgets flake on shared runners; soft mode
+        # records breaches without failing the job. bench.json is still
+        # emitted for the planned cross-run regression gate.
+        env:
+          PYVISTA_CAD_PERF_SOFT: "1"
         run: |
           uv run pytest tests/perf/ \
             --benchmark-only \

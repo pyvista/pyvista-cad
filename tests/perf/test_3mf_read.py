@@ -47,7 +47,7 @@ def three_mf_50k(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.mark.benchmark
-def test_3mf_read_per_vertex(benchmark, three_mf_50k: Path) -> None:
+def test_3mf_read_per_vertex(benchmark, perf_budget, three_mf_50k: Path) -> None:
     """``read_three_mf`` must stay under 5 us/vertex p50."""
     pytest.importorskip('lib3mf')
     from pyvista_cad import read_three_mf
@@ -56,4 +56,6 @@ def test_3mf_read_per_vertex(benchmark, three_mf_50k: Path) -> None:
     assert result is not None
     p50 = benchmark.stats['median']
     per_vert = p50 / 50_000.0
-    assert per_vert < 5e-6, f'3MF read p50 {per_vert * 1e6:.2f} us/vertex exceeds 5 us budget'
+    perf_budget(
+        per_vert < 5e-6, f'3MF read p50 {per_vert * 1e6:.2f} us/vertex exceeds 5 us budget'
+    )

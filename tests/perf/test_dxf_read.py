@@ -21,7 +21,7 @@ def dxf_10k(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.mark.benchmark
-def test_dxf_read_per_entity(benchmark, dxf_10k: Path) -> None:
+def test_dxf_read_per_entity(benchmark, perf_budget, dxf_10k: Path) -> None:
     """``read_dxf`` must stay under 100 us/entity p50."""
     pytest.importorskip('ezdxf')
     from pyvista_cad import read_dxf
@@ -30,6 +30,7 @@ def test_dxf_read_per_entity(benchmark, dxf_10k: Path) -> None:
     assert result is not None
     p50 = benchmark.stats['median']
     per_entity = p50 / 10_000.0
-    assert per_entity < 100e-6, (
-        f'DXF read p50 {per_entity * 1e6:.1f} us/entity exceeds 100 us budget'
+    perf_budget(
+        per_entity < 100e-6,
+        f'DXF read p50 {per_entity * 1e6:.1f} us/entity exceeds 100 us budget',
     )
