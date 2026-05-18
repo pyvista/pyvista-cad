@@ -51,7 +51,14 @@ def test_read_step_cascadio_backend_e2e() -> None:
     assert str(out.field_data['cad.backend'][0]) == 'cascadio'
     assert str(out.field_data['cad.source_format'][0]) == 'step'
     b = combined.bounds
-    assert b.x_min == pytest.approx(-5.0, abs=0.5)
-    assert b.x_max == pytest.approx(5.0, abs=0.5)
-    assert b.z_min == pytest.approx(-5.0, abs=0.5)
-    assert b.z_max == pytest.approx(5.0, abs=0.5)
+    # The fixture is a cube centred on the origin. Assert that shape
+    # as an invariant rather than a literal extent: cascadio's output unit
+    # is version-dependent (newer cascadio emits metres, older
+    # millimetres), so a fixed ±5.0 is brittle. Centred + cubic +
+    # non-degenerate holds in any unit.
+    ext_x = b.x_max - b.x_min
+    ext_z = b.z_max - b.z_min
+    assert ext_x > 0
+    assert b.x_min == pytest.approx(-b.x_max, abs=ext_x * 1e-3)
+    assert b.z_min == pytest.approx(-b.z_max, abs=ext_z * 1e-3)
+    assert ext_x == pytest.approx(ext_z, rel=1e-3)

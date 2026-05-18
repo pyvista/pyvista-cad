@@ -46,7 +46,7 @@ _HERO_CAMERA = [(5.0, -8.0, 12.0), (0.0, 0.0, 0.0), (0.0, 0.0, 1.0)]
 
 def _asymmetric_part() -> pv.PolyData:
     """Slab with an off-centre through-hole — rotation-sensitive."""
-    b3d = pytest.importorskip('build123d')
+    b3d = pytest.importorskip('build123d', exc_type=ImportError)
     shape = b3d.Box(2, 4, 6) - b3d.Cylinder(0.5, 7)
     mesh = pyvista_cad.from_build123d(shape)
     assert isinstance(mesh, pv.PolyData)
@@ -94,7 +94,7 @@ def test_read_dxf_image(verify_image_cache: object) -> None:
 
 def test_read_step_image(verify_image_cache: object) -> None:
     """STEP cube rendered with off-axis camera and an inferno colormap."""
-    pytest.importorskip('build123d')
+    pytest.importorskip('build123d', exc_type=ImportError)
     mb = pyvista_cad.read_step(pyvista_cad.examples.step_cube)
     combined = mb.combine()
     assert combined.n_cells > 0
@@ -128,7 +128,7 @@ def test_cad_view_faces_and_topological_edges(verify_image_cache: object) -> Non
     edges) with a cylindrical wall (circular edges) so a normals or
     edge-extraction regression is visible at the silhouette.
     """
-    pytest.importorskip('OCP')
+    pytest.importorskip('OCP', exc_type=ImportError)
     from OCP.BRepAlgoAPI import BRepAlgoAPI_Cut
     from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox, BRepPrimAPI_MakeCylinder
     from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt

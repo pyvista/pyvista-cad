@@ -6,9 +6,9 @@ default:
 sync:
     uv sync --extra dev
 
-# Sync with all optional CAD backends installed
+# Sync with all optional CAD backends (OpenSCAD is a system binary, not a Python extra)
 sync-full:
-    uv sync --extra dev --extra full --extra openscad
+    uv sync --extra dev --extra full
 
 # Delete and recreate the virtual environment
 reset:

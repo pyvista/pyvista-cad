@@ -11,13 +11,22 @@ from pathlib import Path
 import re
 import warnings
 
+import pytest
+
+# Skip the whole module (don't hard-error at collection) when a CAD
+# backend can't load — notably a Windows "DLL load failed while
+# importing OCP" ImportError, which is not a ModuleNotFoundError.
+pytest.importorskip('build123d', exc_type=ImportError)
+pytest.importorskip('cadquery', exc_type=ImportError)
+pytest.importorskip('gmsh', exc_type=ImportError)
+pytest.importorskip('OCP', exc_type=ImportError)
+
 import build123d
 import cadquery as cq
 import gmsh
 import numpy as np
 from OCP.TopoDS import TopoDS_Shape
 from packaging.version import Version
-import pytest
 import pyvista as pv
 
 import pyvista_cad

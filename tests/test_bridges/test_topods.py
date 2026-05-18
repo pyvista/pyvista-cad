@@ -6,8 +6,8 @@ import pyvista as pv
 
 import pyvista_cad
 
-pytest.importorskip('OCP')
-b3d = pytest.importorskip('build123d')
+pytest.importorskip('OCP', exc_type=ImportError)
+b3d = pytest.importorskip('build123d', exc_type=ImportError)
 
 
 def test_from_topods_box() -> None:

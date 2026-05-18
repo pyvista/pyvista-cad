@@ -19,7 +19,7 @@ from pyvista_cad import (
     topods_to_multiblock,
 )
 
-OCP = pytest.importorskip('OCP')
+OCP = pytest.importorskip('OCP', exc_type=ImportError)
 
 
 @pytest.fixture

@@ -8,8 +8,8 @@ import pytest
 
 def _build_step(tmp_path: Path, n_parts: int) -> Path:
     """Synthesize an ``n_parts``-part STEP fixture via build123d + write_step."""
-    pytest.importorskip('build123d')
-    pytest.importorskip('OCP')
+    pytest.importorskip('build123d', exc_type=ImportError)
+    pytest.importorskip('OCP', exc_type=ImportError)
     import build123d as bd
 
     from pyvista_cad import write_step

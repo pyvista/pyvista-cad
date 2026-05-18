@@ -165,6 +165,12 @@ exclude_lines = [
 addopts = '-v --ignore=tests/perf'
 filterwarnings = [
   'error',
+  # pytest>=8.2: importorskip no longer skips on a non-ModuleNotFound
+  # ImportError (e.g. a Windows OCP "DLL load failed") by default and
+  # emits this DeprecationWarning. CAD importorskip calls pass
+  # `exc_type=ImportError` explicitly; this keeps any other importorskip
+  # from turning the deprecation into a hard CI error.
+  'ignore:.*importorskip.*ImportError.*:DeprecationWarning',
   'ignore:pyvista test.*does not yet exist:UserWarning',
   'ignore::pyparsing.warnings.PyparsingDeprecationWarning',
   'ignore::DeprecationWarning:ezdxf',

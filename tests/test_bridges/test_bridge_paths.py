@@ -12,7 +12,7 @@ import pyvista as pv
 import pyvista_cad
 from pyvista_cad._bridges.build123d import _color_rgb
 
-b3d = pytest.importorskip('build123d')
+b3d = pytest.importorskip('build123d', exc_type=ImportError)
 gmsh = pytest.importorskip('gmsh')
 
 

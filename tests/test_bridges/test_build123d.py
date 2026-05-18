@@ -5,7 +5,7 @@ import pyvista as pv
 
 import pyvista_cad
 
-b3d = pytest.importorskip('build123d')
+b3d = pytest.importorskip('build123d', exc_type=ImportError)
 
 
 def test_from_build123d_box() -> None:

@@ -6,6 +6,11 @@ stamps ``cad.backend='pyiges'`` on each block for downstream
 provenance.
 """
 
+from collections.abc import Iterator
+import contextlib
+import functools
+import importlib
+import io
 import os
 from typing import Any
 
@@ -22,6 +27,33 @@ def _require_pyiges() -> Any:
         msg = 'pyiges not installed; install pyvista-cad[iges]'
         raise OptionalDependencyError(msg) from exc
     return pyiges
+
+
+@contextlib.contextmanager
+def _pyiges_utf8_open() -> Iterator[None]:
+    """Force ``pyiges.iges.open`` to UTF-8 for the duration of a read.
+
+    pyiges opens the IGES file with the interpreter's locale encoding
+    (``pyiges/iges.py`` does a bare ``open(filename)``) and exposes no
+    ``encoding`` hook. On a runner with an ASCII locale (``LANG``/
+    ``LC_ALL`` unset, common on macOS CI) any non-ASCII byte in the file
+    raises ``UnicodeDecodeError``. ``pyiges.iges`` resolves ``open`` via
+    its module globals, so injecting a UTF-8 default there for the call
+    fixes exactly that read with no global or threading side effects.
+    IGES is an ASCII format; ``errors='replace'`` keeps a stray byte in
+    a comment field from aborting the parse.
+    """
+    iges_mod: Any = importlib.import_module('pyiges.iges')
+    sentinel = object()
+    previous = iges_mod.__dict__.get('open', sentinel)
+    iges_mod.open = functools.partial(io.open, encoding='utf-8', errors='replace')
+    try:
+        yield
+    finally:
+        if previous is sentinel:
+            del iges_mod.open
+        else:
+            iges_mod.open = previous
 
 
 def _entity_level(entity: Any) -> int | None:
@@ -87,7 +119,8 @@ def read_iges_internal(
 ) -> pv.DataSet:
     pyiges = _require_pyiges()
     try:
-        iges = pyiges.read(str(path))
+        with _pyiges_utf8_open():
+            iges = pyiges.read(str(path))
     except Exception as exc:
         msg = f'pyiges failed to read {path}: {exc}'
         raise CadReadError(msg) from exc

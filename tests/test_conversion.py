@@ -10,9 +10,17 @@ Real OCCT/build123d geometry only. These pin:
 
 import gc
 
+import pytest
+
+# build123d imports OCP at import time; on Windows that can raise a
+# bare ImportError ("DLL load failed"), not ModuleNotFoundError. Guard
+# before the build123d import so the module skips instead of erroring
+# at collection.
+pytest.importorskip('OCP', exc_type=ImportError)
+pytest.importorskip('build123d', exc_type=ImportError)
+
 import build123d as b3d
 import numpy as np
-import pytest
 import pyvista as pv
 
 from pyvista_cad._conversion import (
@@ -23,8 +31,6 @@ from pyvista_cad._conversion import (
 )
 from pyvista_cad._errors import TessellationError
 import pyvista_cad.examples as examples
-
-pytest.importorskip('OCP')
 
 # Hardcoded INVENTORY-021 gate parameters.
 _LINEAR_DEFLECTION = 0.1

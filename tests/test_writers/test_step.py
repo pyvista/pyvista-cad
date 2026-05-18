@@ -9,8 +9,8 @@ from scipy.spatial import cKDTree
 
 import pyvista_cad
 
-pytest.importorskip('OCP')
-b3d = pytest.importorskip('build123d')
+pytest.importorskip('OCP', exc_type=ImportError)
+b3d = pytest.importorskip('build123d', exc_type=ImportError)
 
 # The faceted STEP writer (polydata_to_topods) sews the source triangulation
 # into a shell; the chordal deviation between that shell and the source

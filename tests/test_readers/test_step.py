@@ -7,7 +7,7 @@ import pyvista as pv
 
 import pyvista_cad
 
-pytest.importorskip('build123d')
+pytest.importorskip('build123d', exc_type=ImportError)
 
 
 def test_read_step_returns_multiblock() -> None:

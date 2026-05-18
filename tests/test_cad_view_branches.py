@@ -7,6 +7,8 @@ the scalar/RGB/edge-colour rendering branches of ``add_cad``, and
 ``plot_cad`` keyword splitting. Real OCCT geometry throughout; no mocks.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 import pyvista as pv
@@ -21,6 +23,7 @@ from pyvista_cad import (
     topods_to_multiblock,
 )
 from pyvista_cad._cad_view import (
+    _ANALYTIC_NORMALS_FLAG,
     _CURVE_KINDS,
     _curve_kind,
     _ensure_mesh,
@@ -34,7 +37,7 @@ from pyvista_cad._cad_view import (
     register_cad_plotter_component,
 )
 
-pytest.importorskip('OCP')
+pytest.importorskip('OCP', exc_type=ImportError)
 
 from OCP.BRep import BRep_Builder
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Cut
@@ -301,16 +304,39 @@ def test_filleted_box_multiblock_normals_unit(filleted_box):
 
 
 def test_cone_faceted_face_emits_cad_warning():
-    """The degraded analytic-normal path: a cone's apex is a surface
-    singularity where the analytic normal is undefined. The face has UV
-    nodes (so the analytic path was attempted) yet yields no normals, so
-    a single aggregated CadWarning is emitted and the face shades faceted
-    rather than smooth."""
+    """The cone apex is a surface singularity where the analytic normal
+    is undefined. Two OCCT behaviors are both correct and the library
+    contract spans both:
+
+    * Older OCCT triangulations carry no cached normals, so the analytic
+      path runs, the apex face abandons it, a single aggregated
+      ``CadWarning`` fires, and the face shades faceted (no
+      ``_ANALYTIC_NORMALS_FLAG``).
+    * Newer ``cadquery-ocp`` builds populate per-node triangulation
+      normals, so the analytic path is never needed: no warning, smooth
+      shading, and ``_ANALYTIC_NORMALS_FLAG`` is stamped.
+
+    Assert exactly one of the two holds (``uv.lock`` is uncommitted, so
+    CI resolves whichever OCCT wheel is current). Either way geometry is
+    intact."""
     cone = BRepPrimAPI_MakeCone(5.0, 0.0, 10.0).Shape()
-    with pytest.warns(CadWarning, match=r'abandoned the analytic-normal path'):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
         mb = topods_to_multiblock(cone, linear_deflection=0.5)
-    # Geometry is intact; only shading degrades.
-    assert mb['faces'].n_blocks >= 1
+
+    abandoned = [
+        w
+        for w in caught
+        if issubclass(w.category, CadWarning)
+        and 'abandoned the analytic-normal path' in str(w.message)
+    ]
+    faces = mb['faces']
+    cached_normals = _ANALYTIC_NORMALS_FLAG in faces.field_data
+    # Exactly one path: faceted-fallback (warned) XOR cached-normals.
+    assert bool(abandoned) != cached_normals
+
+    # Geometry is intact under both paths.
+    assert faces.n_blocks >= 1
     assert mb['edges'].n_cells > 0
 
 

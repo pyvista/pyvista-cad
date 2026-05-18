@@ -43,7 +43,7 @@ def test_parse_document_xml_extracts_label_and_brep_filename():
 
 
 def test_read_fcstd_round_trip(tmp_path: Path):
-    pytest.importorskip('OCP')
+    pytest.importorskip('OCP', exc_type=ImportError)
     from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
     from OCP.BRepTools import BRepTools
 
@@ -66,7 +66,7 @@ def test_read_fcstd_round_trip(tmp_path: Path):
 
 
 def test_read_fcstd_via_pv_read(tmp_path: Path):
-    pytest.importorskip('OCP')
+    pytest.importorskip('OCP', exc_type=ImportError)
     from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
     from OCP.BRepTools import BRepTools
 

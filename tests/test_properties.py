@@ -95,8 +95,8 @@ def test_topods_polydata_round_trip_volume(w: float, h: float, d: float) -> None
 
     Sewing tolerance allows up to 5% slack on either side.
     """
-    b3d = pytest.importorskip('build123d')
-    pytest.importorskip('OCP')
+    b3d = pytest.importorskip('build123d', exc_type=ImportError)
+    pytest.importorskip('OCP', exc_type=ImportError)
     from OCP.BRepGProp import BRepGProp  # noqa: PLC0415
     from OCP.GProp import GProp_GProps  # noqa: PLC0415
 

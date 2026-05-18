@@ -5,7 +5,7 @@ import pyvista as pv
 
 import pyvista_cad
 
-cq = pytest.importorskip('cadquery')
+cq = pytest.importorskip('cadquery', exc_type=ImportError)
 
 
 def test_from_cadquery_box() -> None:

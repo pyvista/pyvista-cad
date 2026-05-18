@@ -30,7 +30,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14, windows-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # 3.14 is intentionally absent: every test extra transitively
+        # pulls `cadquery` (dev -> docs -> full -> cadquery), and
+        # `cadquery-ocp` ships no cp314 wheel for any platform/version,
+        # so the env is uninstallable on 3.14. Re-add once cadquery-ocp
+        # publishes cp314 wheels. requires-python stays `>=3.10`.
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
         # `dev,full` carries `step-light` (cascadio) so the cascadio STEP
         # backend E2E runs in CI; `openscad` is installed via apt on Linux
         # so the SCAD reader E2E runs there too. One combination gaining

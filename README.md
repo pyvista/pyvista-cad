@@ -30,6 +30,10 @@
 | `[openscad]`   | (uses `openscad` CLI)   | SCAD read                           |
 | `[full]`       | all of the above        | every supported format              |
 
+**Python support:** 3.10 – 3.13. Python 3.14 is not yet supported: the
+`[step]`/`[full]` extras depend on `cadquery-ocp`, which publishes no
+cp314 wheels for any platform. 3.14 will be added once those wheels ship.
+
 trimesh interop is provided by pyvista core (`pyvista.from_trimesh`, `pyvista.to_trimesh`) and the `pyvista-trimesh` package's `.trimesh` accessor (install `pyvista-cad[trimesh]`); pyvista-cad does not duplicate it.
 
 ```bash
