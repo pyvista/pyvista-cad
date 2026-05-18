@@ -101,6 +101,7 @@ def _generate_bracket_step(path: Path) -> None:
             _ = hole_sketch
         b3d.extrude(amount=-thickness, mode=b3d.Mode.SUBTRACT)
 
+    bracket.part.label = 'bracket'
     b3d.export_step(bracket.part, str(path))
 
 

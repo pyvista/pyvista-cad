@@ -56,3 +56,7 @@ docs-serve: docs
 # Regenerate the README's hero render asset
 render-hero:
     uv run --no-sync python assets/render_hero.py
+
+# Regenerate the README per-snippet screenshots
+render-readme:
+    uv run --no-sync python assets/render_readme.py

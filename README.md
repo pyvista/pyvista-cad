@@ -55,6 +55,10 @@ floorplan = pv.read('floor.dxf')         # PolyData with Layer cell data
 layers = floorplan.cad.split_by_layer()  # MultiBlock keyed on layer
 ```
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pyvista/pyvista-cad/main/doc/_static/readme_quickstart.png" alt="Two independent example fixtures. Left: a STEP part read with pv.read, drawn CAD-style with shaded faces and topological edges. Right: a DXF drawing split into colored per-layer blocks (body, centerlines, dimensions, holes)." width="90%">
+</p>
+
 ## CAD-friendly plotting
 
 A generic mesh viewer draws the _triangulation_. With `show_edges=True` you see every facet edge, an artifact of the tessellation tolerance. A CAD application instead shows smoothly shaded faces with the model's _topological_ edges (the B-rep feature curves) on top. `pyvista-cad` reproduces that: analytic surface normals so a coarse mesh still shades round, topological edges recovered from the cached B-rep, triangle edges hidden.
@@ -62,40 +66,63 @@ A generic mesh viewer draws the _triangulation_. With `show_edges=True` you see 
 ```python
 import pyvista as pv
 import pyvista_cad
-from pyvista_cad.examples import bracket_step_path
+from pyvista_cad.examples import downloads
 
-mb = pyvista_cad.read_step(bracket_step_path())
+mb = pyvista_cad.read_step(downloads.step_part_path())  # NIST AM Bench specimen
 
-mb.cad.plot()                       # the hero render above
+mb.cad.plot()                       # shaded faces + topological edges
 
 # Or compose it into a scene, color faces by a scalar, keep the edges:
-surf = mb.combine().extract_surface()
-surf['height'] = surf.points[:, 2]
+part = mb[0]                        # a cached block keeps its B-rep
+part['height'] = part.points[:, 2]
 pl = pv.Plotter()
-pl.cad.add(surf, scalars='height', cmap='viridis')
+pl.cad.add(part, scalars='height', cmap='viridis')
 pl.show()
 ```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pyvista/pyvista-cad/main/doc/_static/readme_cad_plotting.png" alt="The NIST AM Bench specimen. Left: cad.plot draws shaded faces with topological B-rep edges. Right: the same cached block colored by a height scalar with the viridis colormap, the topological edges still drawn." width="90%">
+</p>
 
 `.cad.plot()` and the `plotter.cad` component accept a `MultiBlock`, `PolyData`, raw `TopoDS`, or a build123d / cadquery object; a plain mesh with no B-rep origin degrades to crease feature edges.
 
 ## Real-world workflow
 
-Load a STEP assembly, split it into parts, run a filter on one, write the result back out.
+Load a STEP assembly, locate a part, drive it through gmsh to a
+tetrahedral FEA mesh, then clip to expose the interior. Needs the
+`[gmsh]` extra.
 
 ```python
+import gmsh
 import pyvista as pv
 import pyvista_cad
-from pyvista_cad.examples import bracket_step_path
+from pyvista_cad.examples import downloads
 
-assembly = pv.read(bracket_step_path())
+assembly = pv.read(downloads.step_assembly_path())  # 3-part NIST build assembly
 print(assembly.cad.assembly_tree())                 # nested dict of block names
-matches = assembly.cad.find(name='bracket')         # list of (path, block)
+matches = assembly.cad.find('*PartCAD')             # glob -> list of (path, block)
 path, part = matches[0]
-clipped = part.clip('z')
-clipped.save('bracket_clipped.vtu')                 # cad.* field data round-trips
+
+gmsh.initialize()
+try:
+    gmsh.model.occ.importShapes(downloads.step_part_path())
+    gmsh.model.occ.synchronize()
+    gmsh.option.setNumber('Mesh.MeshSizeMax', 2.0)
+    gmsh.model.mesh.generate(3)
+    grid = pyvista_cad.from_gmsh()
+finally:
+    gmsh.finalize()
+
+grid = grid.extract_cells(grid.celltypes == 10)     # keep VTK_TETRA
+clip = grid.clip(normal='x', crinkle=True)
+clip.save('part_tets.vtu')                           # full tet mesh round-trips
 ```
 
-The bundled `bracket_step_path()` fixture is a parametric L-bracket (50×30×10 mm, two M6 through-holes, 3 mm fillet) generated with build123d and committed as STEP, so no build123d install is needed to read it.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pyvista/pyvista-cad/main/doc/_static/readme_workflow.png" alt="A 3-part NIST build assembly. Three steps: the full assembly as read (CAD-style), the located PartCAD component highlighted against the muted rest, then that part meshed tetrahedrally with gmsh and crinkle-clipped to expose the colored tet interior." width="100%">
+</p>
+
+The Quick start uses bundled offline fixtures (`bracket_step_path()`, a parametric L-bracket committed as STEP; `drawing_dxf_path()`, a layered 2D drawing). The other examples pull real, openly licensed parts from `pyvista_cad.examples.downloads` (cached on first fetch) — the NIST AM Bench LPBF specimen and its 3-part build assembly.
 
 ## Common tasks
 
