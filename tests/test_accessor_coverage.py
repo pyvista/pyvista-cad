@@ -40,6 +40,7 @@ from pyvista_cad import (
 )
 from pyvista_cad._accessor import (
     CadDataSetAccessor,
+    CadMultiBlockAccessor,
     _resolve_cell_array,
     _scale_points,
 )
@@ -1241,3 +1242,45 @@ def test_polydata_to_topods_raises_on_zero_area_triangle() -> None:
     mesh = pv.PolyData(pts, np.array([3, 0, 1, 2]))
     with pytest.raises(TessellationError, match='OCCT face construction failed'):
         _conversion.polydata_to_topods(mesh)
+
+
+def test_clone_tree_skips_none_blocks() -> None:
+    """``_clone_tree`` drops ``None`` entries at every nesting level.
+
+    Covers the ``block is None: continue`` branch deterministically (it
+    is otherwise only hit when an OCCT build happens to yield an empty
+    block, which varies by wheel)."""
+    inner = pv.MultiBlock()
+    inner.append(pv.Cube(), name='solid')
+    inner.append(None, name='empty')  # None leaf -> the skipped branch
+    outer = pv.MultiBlock()
+    outer.append(inner, name='inner')
+    outer.append(None, name='empty_top')  # None at the top level too
+
+    cloned = CadMultiBlockAccessor._clone_tree(outer, frozenset())
+
+    assert cloned.n_blocks == 1  # only the non-None nested tree survives
+    assert cloned.get_block_name(0) == 'inner'
+    assert cloned[0].n_blocks == 1
+    assert cloned[0].get_block_name(0) == 'solid'
+
+
+def test_drop_spatial_outliers_non_finite_centroids_returns_clone() -> None:
+    """When too few leaf centroids are finite the tree is returned
+    structurally unchanged (the ``finite.sum() < min_blocks`` guard).
+
+    Deterministic: NaN points force every centroid non-finite regardless
+    of the geometry backend."""
+    mb = pv.MultiBlock()
+    for i in range(5):
+        # Points at infinity: n_points stays > 0 (passes the leaf
+        # filter) but `.center` is non-finite, so every centroid fails
+        # the finite mask and `finite.sum() < min_blocks` holds.
+        pts = np.full((3, 3), np.inf)
+        leaf = pv.PolyData(pts, np.array([1, 0, 1, 1, 1, 2]))
+        mb.append(leaf, name=f'b{i}')
+
+    out = mb.cad.drop_spatial_outliers(min_blocks=4)
+
+    assert out.n_blocks == mb.n_blocks
+    assert sorted(out.keys()) == sorted(mb.keys())

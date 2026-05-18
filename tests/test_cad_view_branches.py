@@ -27,6 +27,7 @@ from pyvista_cad._cad_view import (
     _CURVE_KINDS,
     _curve_kind,
     _ensure_mesh,
+    _face_normals,
     _face_unit_normal_at_edge,
     _feature_edge_fallback,
     _resolve_cad,
@@ -39,7 +40,7 @@ from pyvista_cad._cad_view import (
 
 pytest.importorskip('OCP', exc_type=ImportError)
 
-from OCP.BRep import BRep_Builder
+from OCP.BRep import BRep_Builder, BRep_Tool
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Cut
 from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeFillet
@@ -50,9 +51,10 @@ from OCP.BRepPrimAPI import (
     BRepPrimAPI_MakeSphere,
     BRepPrimAPI_MakeTorus,
 )
-from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
+from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt, gp_Trsf
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
 from OCP.TopExp import TopExp_Explorer
+from OCP.TopLoc import TopLoc_Location
 from OCP.TopoDS import TopoDS, TopoDS_Builder, TopoDS_Compound, TopoDS_Edge
 
 from pyvista_cad._bridges.topods import from_topods, to_topods
@@ -707,4 +709,88 @@ def test_filleted_box_image_regression(verify_image_cache, filleted_box):
     pl = pv.Plotter()
     add_cad(pl, filleted_box, linear_deflection=0.3, edge_color='black', smooth=True)
     pl.camera_position = [(60, -50, 45), (10, 6, 4), (0, 0, 1)]
+    pl.show()
+
+
+# --- OCCT-build-invariant normal-path coverage ---------------------------
+#
+# Whether an OCCT triangulation carries cached per-node normals
+# (``tri.HasNormals()``) is decided by the cadquery-ocp wheel, not by us:
+# older/Linux builds return False (the analytic path runs), newer/macOS
+# builds return True (the fast path runs). The other path is then dead on
+# that runner, which used to swing the per-file coverage contract. These
+# tests drive both ``_face_normals`` branches and the faceted fallback
+# with synthetic inputs so coverage is deterministic on every wheel.
+
+
+class _FakeFastTri:
+    """Triangulation stub that reports cached normals (fast path)."""
+
+    def HasNormals(self) -> bool:  # noqa: N802  (mirrors the OCCT API)
+        return True
+
+    def Normal(self, _i: int) -> gp_Dir:  # noqa: N802  (mirrors the OCCT API)
+        return gp_Dir(0.0, 0.0, 1.0)
+
+
+class _NoCachedNormals:
+    """Wrap a real triangulation but hide its cached normals, forcing
+    the analytic surface-evaluation path regardless of the OCCT wheel."""
+
+    def __init__(self, real: object) -> None:
+        self._real = real
+
+    def HasNormals(self) -> bool:  # noqa: N802  (mirrors the OCCT API)
+        return False
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._real, name)
+
+
+def _first_box_face_and_triangulation():
+    box = BRepPrimAPI_MakeBox(10.0, 6.0, 4.0).Shape()
+    _ensure_mesh(box, 0.3, 0.5)
+    fx = TopExp_Explorer(box, TopAbs_FACE)
+    face = TopoDS.Face_s(fx.Current())
+    loc = TopLoc_Location()
+    tri = BRep_Tool.Triangulation_s(face, loc)
+    return face, tri, loc.Transformation()
+
+
+def test_face_normals_fast_path_returns_cached_normals():
+    """``tri.HasNormals()`` true: the cached-normal fast path runs and
+    returns one transformed unit normal per node."""
+    out = _face_normals(face=None, tri=_FakeFastTri(), trsf=gp_Trsf(), n_nodes=3)
+    assert out is not None
+    assert out.shape == (3, 3)
+    assert np.allclose(np.linalg.norm(out, axis=1), 1.0, atol=1e-9)
+
+
+def test_face_normals_analytic_path_evaluates_surface():
+    """``tri.HasNormals()`` false: the analytic ``Geom_Surface`` path
+    runs on a planar face and yields real unit normals."""
+    face, tri, trsf = _first_box_face_and_triangulation()
+    n_nodes = tri.NbNodes()
+    out = _face_normals(face=face, tri=_NoCachedNormals(tri), trsf=trsf, n_nodes=n_nodes)
+    assert out is not None
+    assert out.shape == (n_nodes, 3)
+    assert np.allclose(np.linalg.norm(out, axis=1), 1.0, atol=1e-6)
+
+
+def test_faceted_fallback_warns_and_skips_analytic_flag(monkeypatch):
+    """When no face yields analytic normals the aggregated ``CadWarning``
+    fires, the analytic-normals flag is withheld, and the consumer takes
+    the crease-splitting (``split_sharp_edges``) branch — all exercised
+    deterministically by forcing ``_face_normals`` to ``None``."""
+    monkeypatch.setattr('pyvista_cad._cad_view._face_normals', lambda *a, **k: None)
+    box = BRepPrimAPI_MakeBox(8.0, 5.0, 3.0).Shape()
+
+    with pytest.warns(CadWarning, match=r'abandoned the analytic-normal path'):
+        mb = topods_to_multiblock(box, linear_deflection=0.5)
+    assert _ANALYTIC_NORMALS_FLAG not in mb['faces'].field_data
+
+    # The faceted result drives the `not analytic_normals` consumer.
+    pl = pv.Plotter()
+    with pytest.warns(CadWarning, match=r'abandoned the analytic-normal path'):
+        add_cad(pl, box, linear_deflection=0.5, smooth=True)
     pl.show()

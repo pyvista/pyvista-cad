@@ -7,6 +7,7 @@ makes :func:`pyvista.read` route every supported extension to this
 package's readers, without eagerly importing any heavy CAD backend.
 """
 
+import importlib
 import os
 import subprocess
 import sys
@@ -67,6 +68,39 @@ def _run(script: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _backend_importable(*names: str) -> bool:
+    """True if any of ``names`` imports cleanly in this environment.
+
+    Catches ``ImportError`` broadly, not just ``ModuleNotFoundError``:
+    on Windows ``import OCP`` raises a bare ``ImportError`` ("DLL load
+    failed") when the OCCT runtime is missing, which still means the
+    backend is unusable here.
+    """
+
+    def _importable(name: str) -> bool:
+        try:
+            importlib.import_module(name)
+        except ImportError:
+            return False
+        return True
+
+    return any(_importable(name) for name in names)
+
+
+# Each format needs at least one working backend to round-trip. When
+# none is installable in this environment (e.g. the `dev` extra on a
+# Windows runner where OCP's DLL won't load and cascadio is absent),
+# the dispatch contract is untestable here — skip rather than fail.
+_FORMAT_BACKENDS: dict[str, tuple[str, ...]] = {
+    'step': ('cascadio', 'build123d', 'OCP'),
+    'brep': ('OCP',),
+    'iges': ('pyiges',),
+    'dxf': ('ezdxf',),
+    '3mf': ('lib3mf',),
+    'ifc': ('ifcopenshell',),
+}
+
+
 @pytest.mark.parametrize(
     ('path_expr', 'expected_type', 'expected_cells', 'expected_format'),
     _FIXTURES,
@@ -84,6 +118,13 @@ def test_bare_import_pv_read_dispatches(
     bare ``import pyvista_cad`` (no ``_readers`` submodule import),
     then asserts type, combined cell count, and ``cad.source_format``.
     """
+    backends = _FORMAT_BACKENDS.get(expected_format, ())
+    if backends and not _backend_importable(*backends):
+        pytest.skip(
+            f'no working {expected_format} backend in this environment '
+            f'(tried {", ".join(backends)})'
+        )
+
     script = f"""
         import pyvista as pv
         import pyvista_cad  # bare import only; no _readers submodule
