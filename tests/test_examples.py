@@ -6,7 +6,9 @@ Two concerns are covered:
   files shipped inside the wheel. Every public asset is loaded with its
   matching reader and the resulting dataset is checked for type, non-empty
   geometry, finite bounds, and the expected ``cad.*`` metadata. No network
-  is involved, so these never skip.
+  is involved; the only skip is a STEP case on a runner with no STEP
+  backend (e.g. Windows, where the OCP DLL won't load and cascadio is
+  not in the extra).
 * The :mod:`pyvista_cad.examples.downloads` helpers fetch hash-verified
   files through ``pooch``. The registry/URL/hash construction is asserted
   for every entry unconditionally (a real assertion on the live ``pooch``
@@ -17,6 +19,7 @@ Two concerns are covered:
 """
 
 from collections.abc import Callable
+import importlib
 import socket
 
 import numpy as np
@@ -29,6 +32,32 @@ from pyvista_cad import examples
 pooch = pytest.importorskip('pooch')
 
 from pyvista_cad.examples import downloads  # noqa: E402
+
+
+def _step_backend_available() -> bool:
+    """True if any STEP backend imports here.
+
+    ``read_step`` needs cascadio or build123d/OCP. On a Windows runner
+    the OCP DLL often fails to load (a bare ``ImportError``, not
+    ``ModuleNotFoundError``) and cascadio is absent from the ``dev`` /
+    ``dev,step`` extras, so STEP is genuinely unavailable — skip those
+    cases rather than fail.
+    """
+
+    def _ok(mod: str) -> bool:
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            return False
+        return True
+
+    return any(_ok(mod) for mod in ('cascadio', 'build123d', 'OCP'))
+
+
+_requires_step_backend = pytest.mark.skipif(
+    not _step_backend_available(),
+    reason='no STEP backend importable (cascadio/build123d/OCP unavailable)',
+)
 
 
 def _has_network(host: str = 'raw.githubusercontent.com') -> bool:
@@ -150,6 +179,8 @@ def test_bundled_example_loads(
     backend: str,
 ) -> None:
     """Every bundled asset resolves, reads, and carries ``cad.*`` metadata."""
+    if source_format == 'step' and not _step_backend_available():
+        pytest.skip('no STEP backend importable (cascadio/build123d/OCP unavailable)')
     path = loader()
     assert isinstance(path, str)
     assert path.endswith(('.step', '.dxf', '.3mf', '.ifc')), (
@@ -165,6 +196,7 @@ def test_bundled_example_loads(
     )
 
 
+@_requires_step_backend
 def test_step_cube_bounds_are_the_10mm_cube() -> None:
     """The bundled cube is the documented 10 mm cube centred on the origin."""
     mb = pyvista_cad.read_step(examples.step_cube)
@@ -200,7 +232,10 @@ def test_download_registry_matches_files_table() -> None:
     """``_POOCH`` is built consistently from the ``_FILES`` source table."""
     assert set(downloads._POOCH.registry) == set(downloads._FILES)
     assert len(downloads._FILES) == 11
-    assert downloads._POOCH.abspath.name == 'pyvista_cad'
+    # pooch.os_cache puts the app name in the path but appends a
+    # platform-specific leaf ('Cache' on Windows), so assert the app
+    # directory is present rather than that it is the last component.
+    assert 'pyvista_cad' in downloads._POOCH.abspath.parts
 
 
 @pytest.mark.parametrize('name', sorted(downloads._FILES))
@@ -243,6 +278,7 @@ def test_downloader_is_public_and_callable(name: str) -> None:
 
 
 @_requires_network
+@_requires_step_backend
 def test_fetch_step_recoater_reads_correctly() -> None:
     """Smallest NIST STEP part fetches, hash-verifies, and reads as solid."""
     obj = pyvista_cad.read_step(downloads.step_recoater_path())
