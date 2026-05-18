@@ -7,6 +7,7 @@ makes :func:`pyvista.read` route every supported extension to this
 package's readers, without eagerly importing any heavy CAD backend.
 """
 
+import os
 import subprocess
 import sys
 import textwrap
@@ -51,11 +52,17 @@ _FORBIDDEN = (
 
 
 def _run(script: str) -> subprocess.CompletedProcess[str]:
+    # Decode child output as UTF-8 explicitly: pyiges' tqdm progress bar
+    # prints U+2588 block glyphs, and on an ASCII-locale runner (macOS
+    # CI with LANG/LC_ALL unset) plain `text=True` would decode the
+    # captured stream with the ascii codec and raise UnicodeDecodeError.
     return subprocess.run(
         [sys.executable, '-c', textwrap.dedent(script)],
         check=False,
         capture_output=True,
-        text=True,
+        encoding='utf-8',
+        errors='replace',
+        env={**os.environ, 'PYTHONUTF8': '1'},
         cwd='.',
     )
 
