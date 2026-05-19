@@ -50,6 +50,21 @@ def test_topods_to_edges_returns_polylines(block_with_hole):
     assert len(np.unique(edges.cell_data['cad.edge_id'])) == edges.n_cells
 
 
+def test_topods_to_edges_node_coordinates_are_finite(block_with_hole):
+    """Regression: TColStd_Array1OfInteger iteration must yield node indices
+    directly (not via .Value()), otherwise point coordinates are garbage or
+    an AttributeError/TypeError is raised on OCP 7.8+.
+    """
+    edges = topods_to_edges(block_with_hole, linear_deflection=0.3)
+    pts = edges.points
+    assert pts.shape[1] == 3
+    assert np.all(np.isfinite(pts)), 'edge point coordinates must be finite'
+    # The box is 20×12×8 mm; all coordinates must lie within its bounding box.
+    assert pts[:, 0].min() >= -0.1 and pts[:, 0].max() <= 20.1
+    assert pts[:, 1].min() >= -0.1 and pts[:, 1].max() <= 12.1
+    assert pts[:, 2].min() >= -0.1 and pts[:, 2].max() <= 8.1
+
+
 def test_edge_kind_classifies_lines_and_circles(block_with_hole):
     edges = topods_to_edges(block_with_hole, linear_deflection=0.3)
     kinds = set(np.unique(edges.cell_data['cad.edge_kind']).tolist())
