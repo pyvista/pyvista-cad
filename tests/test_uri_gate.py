@@ -5,15 +5,15 @@ when handed a remote URI so that :func:`pyvista.read` falls back to
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
+import shutil
 
-import pyvista as pv
 import pytest
+import pyvista as pv
 from pyvista.core.utilities import reader_registry as rr
 from pyvista.core.utilities.reader_registry import LocalFileRequiredError
 
-import pyvista_cad  # noqa: F401  # registers readers
+import pyvista_cad  # registers readers as a side effect
 
 DATA = Path(__file__).parent / 'data'
 
@@ -37,11 +37,7 @@ _EXT_FIXTURE: dict[str, Path | None] = {
 
 
 def _pyvista_cad_readers() -> list[rr.ReaderRegistration]:
-    return [
-        r
-        for r in rr.registered_readers()
-        if r.source.startswith('pyvista_cad')
-    ]
+    return [r for r in rr.registered_readers() if r.source.startswith('pyvista_cad')]
 
 
 def test_pyvista_cad_owns_expected_extensions() -> None:
@@ -80,7 +76,8 @@ def test_pv_read_round_trips_remote_uri(
     re-invokes the reader with the returned local path.
     """
     src = _EXT_FIXTURE[ext]
-    assert src is not None and src.exists()
+    assert src is not None
+    assert src.exists()
 
     calls = {'n': 0}
 

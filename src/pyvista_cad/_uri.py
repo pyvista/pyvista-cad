@@ -9,12 +9,15 @@ filesystem so that ``http(s)://`` (and other scheme) inputs round-trip
 through ``_download_uri`` instead of dying with ``FileNotFoundError``.
 """
 
-import os
+from typing import TYPE_CHECKING
 
 from pyvista.core.utilities.reader_registry import (
     LocalFileRequiredError,
     has_scheme,
 )
+
+if TYPE_CHECKING:
+    import os
 
 
 def require_local_path(path: 'str | os.PathLike[str]') -> None:
