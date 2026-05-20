@@ -72,20 +72,10 @@ def _has_network(host: str = 'raw.githubusercontent.com') -> bool:
 _NETWORK = _has_network()
 
 
-def _requires_network(func):
-    """Tag a test as a slow live download and skip it when offline.
-
-    Applies ``pytest.mark.slow`` (so fast CI cells can deselect the
-    whole class via ``-m "not slow"``) plus a ``skipif`` fallback for
-    local/offline dev — CI runners always have network, but a developer
-    on a flight does not, and we don't want the suite to hard-fail
-    there.
-    """
-    skipif = pytest.mark.skipif(
-        not _NETWORK,
-        reason='no network: live pooch fetch unavailable in this sandbox',
-    )
-    return pytest.mark.slow(skipif(func))
+_requires_network = pytest.mark.skipif(
+    not _NETWORK,
+    reason='no network: live pooch fetch unavailable in this sandbox',
+)
 
 
 def _leaf(obj: pv.DataSet | pv.MultiBlock) -> pv.DataSet:

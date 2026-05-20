@@ -56,9 +56,7 @@ jobs:
           - { os: ubuntu-latest, python-version: "3.13", extras: "dev" }
           - { os: ubuntu-latest, python-version: "3.10", extras: "dev,step" }
           - { os: ubuntu-latest, python-version: "3.13", extras: "dev,step" }
-          # Coverage upload cell — runs the full suite (slow live pooch
-          # fetches included) so remote-fetch paths stay covered. Other
-          # cells deselect those via `-m "not slow"`.
+          # Coverage upload cell.
           - { os: ubuntu-latest, python-version: "3.13", extras: "dev,full,step-light", coverage: true }
           # macOS — minimal: lowest + highest Python only
           - { os: macos-14, python-version: "3.10", extras: "dev" }
@@ -89,12 +87,31 @@ jobs:
             libocct-data-exchange-dev libocct-foundation-dev xvfb openscad
       - name: Install dependencies
         run: uv sync --extra ${{ matrix.extras }}
+      - name: Cache pooch downloads
+        # `pyvista_cad.examples.downloads` fetches multi-MB CAD fixtures
+        # from raw.githubusercontent.com / huggingface on first use
+        # (~20s per cell, cold). The pooch registry is hard-coded in
+        # downloads.py with sha256 pins, so hashing that file alone is
+        # a complete cache key — any registry change rotates the key
+        # and forces a re-fetch. `PYVISTA_CAD_USERDATA_PATH` overrides
+        # pooch's default OS cache dir to a workspace-local path so
+        # `actions/cache` can pick it up uniformly across runners.
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.pooch-cache
+          key: pooch-${{ runner.os }}-${{ hashFiles('src/pyvista_cad/examples/downloads.py') }}
+          restore-keys: |
+            pooch-${{ runner.os }}-
       - name: Run tests (coverage cell)
         if: matrix.coverage
+        env:
+          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache
         run: uv run pytest tests/ -n auto --cov --cov-report=xml -v
-      - name: Run tests (non-coverage cells, slow-deselect)
+      - name: Run tests
         if: ${{ !matrix.coverage }}
-        run: uv run pytest tests/ -n auto -m "not slow" -v
+        env:
+          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache
+        run: uv run pytest tests/ -n auto -v
       - name: Upload coverage
         if: matrix.coverage
         uses: codecov/codecov-action@v5
