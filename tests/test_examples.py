@@ -73,17 +73,19 @@ _NETWORK = _has_network()
 
 
 def _requires_network(func):
-    """Tag a test as network-dependent and skip it when offline.
+    """Tag a test as a slow live download and skip it when offline.
 
-    Applies both ``pytest.mark.network`` (so CI cells can deselect the
-    whole class via ``-m "not network"``) and a skipif fallback for
-    local/offline runs.
+    Applies ``pytest.mark.slow`` (so fast CI cells can deselect the
+    whole class via ``-m "not slow"``) plus a ``skipif`` fallback for
+    local/offline dev — CI runners always have network, but a developer
+    on a flight does not, and we don't want the suite to hard-fail
+    there.
     """
     skipif = pytest.mark.skipif(
         not _NETWORK,
         reason='no network: live pooch fetch unavailable in this sandbox',
     )
-    return pytest.mark.network(skipif(func))
+    return pytest.mark.slow(skipif(func))
 
 
 def _leaf(obj: pv.DataSet | pv.MultiBlock) -> pv.DataSet:

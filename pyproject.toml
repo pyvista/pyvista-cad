@@ -202,7 +202,7 @@ markers = [
   'freecad: requires FreeCAD installed as a system package',
   'compose: cross-package integration test (requires .manifold and/or .trimesh installed)',
   'benchmark: performance regression test (skipped by default unless --benchmark-only)',
-  'network: requires live network (live pooch fetches against raw.githubusercontent.com)',
+  'slow: live pooch fetch (multi-second remote download); deselect in fast CI cells',
 ]
 
 [tool.ruff]
