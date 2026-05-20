@@ -85,7 +85,7 @@ def test_full_aggregates_the_format_extras() -> None:
     assert match is not None, f'`full` does not reference pyvista-cad[...]: {full_spec}'
     aggregated = set(match.group(1).split(','))
 
-    for required in ('step', '3mf', 'iges', 'ifc', 'gmsh', 'cadquery', 'trimesh'):
+    for required in ('step', '3mf', 'iges', 'ifc', 'cadquery', 'trimesh'):
         assert required in aggregated, (
             f'`full` does not aggregate {required!r}; aggregates {sorted(aggregated)}'
         )

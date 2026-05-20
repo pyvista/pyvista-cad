@@ -15,7 +15,6 @@ FORBIDDEN = (
     'ifcopenshell',
     'OCP',
     'build123d',
-    'gmsh',
     'FreeCAD',
     'pyiges',
     'geomdl',
@@ -177,20 +176,6 @@ def _trigger_bridge_build123d_to() -> None:
     to_build123d(pv.Sphere())
 
 
-def _trigger_bridge_gmsh_from() -> None:
-    from pyvista_cad import from_gmsh
-
-    from_gmsh()
-
-
-def _trigger_bridge_gmsh_to() -> None:
-    import pyvista as pv
-
-    from pyvista_cad import to_gmsh
-
-    to_gmsh(pv.Sphere())
-
-
 def _trigger_bridge_topods_from() -> None:
     from pyvista_cad import from_topods
 
@@ -223,8 +208,6 @@ LAZY_IMPORT_CASES = [
     ),
     ('bridge_b3d_from', _trigger_bridge_build123d_from, ('build123d',), '[step]', 'build123d'),
     ('bridge_b3d_to', _trigger_bridge_build123d_to, ('build123d',), '[step]', 'build123d'),
-    ('bridge_gmsh_from', _trigger_bridge_gmsh_from, ('gmsh',), '[gmsh]', 'gmsh'),
-    ('bridge_gmsh_to', _trigger_bridge_gmsh_to, ('gmsh',), '[gmsh]', 'gmsh'),
     ('bridge_topods_from', _trigger_bridge_topods_from, ('OCP',), '[step]', 'OCP'),
     ('bridge_topods_to', _trigger_bridge_topods_to, ('OCP',), '[step]', 'OCP'),
 ]

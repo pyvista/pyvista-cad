@@ -45,7 +45,6 @@ if TYPE_CHECKING:  # pragma: no cover - types only
     from pyvista_cad import examples as examples
     from pyvista_cad._bridges.build123d import from_build123d, to_build123d
     from pyvista_cad._bridges.cadquery import from_cadquery, to_cadquery
-    from pyvista_cad._bridges.gmsh import from_gmsh, to_gmsh
     from pyvista_cad._bridges.topods import from_topods, to_topods
     from pyvista_cad._cad_view import (
         add_cad,
@@ -76,8 +75,6 @@ _LAZY: dict[str, tuple[str, str]] = {
     'to_build123d': ('pyvista_cad._bridges.build123d', 'to_build123d'),
     'from_cadquery': ('pyvista_cad._bridges.cadquery', 'from_cadquery'),
     'to_cadquery': ('pyvista_cad._bridges.cadquery', 'to_cadquery'),
-    'from_gmsh': ('pyvista_cad._bridges.gmsh', 'from_gmsh'),
-    'to_gmsh': ('pyvista_cad._bridges.gmsh', 'to_gmsh'),
     'from_topods': ('pyvista_cad._bridges.topods', 'from_topods'),
     'to_topods': ('pyvista_cad._bridges.topods', 'to_topods'),
     'add_cad': ('pyvista_cad._cad_view', 'add_cad'),
@@ -222,7 +219,6 @@ __all__ = [
     'flatten_to_cad_polydata',
     'from_build123d',
     'from_cadquery',
-    'from_gmsh',
     'from_topods',
     'get_cad_edges',
     'plot_cad',
@@ -237,7 +233,6 @@ __all__ = [
     'read_three_mf',
     'to_build123d',
     'to_cadquery',
-    'to_gmsh',
     'to_topods',
     'topods_to_edges',
     'topods_to_multiblock',

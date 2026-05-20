@@ -17,11 +17,9 @@ from pyvista_cad import (
     OptionalDependencyError,
     from_build123d,
     from_cadquery,
-    from_gmsh,
     from_topods,
     to_build123d,
     to_cadquery,
-    to_gmsh,
     to_topods,
 )
 
@@ -60,15 +58,3 @@ def test_to_build123d_missing_build123d(monkeypatch):
     monkeypatch.setitem(sys.modules, 'build123d', None)
     with pytest.raises(OptionalDependencyError, match=r'build123d not installed'):
         to_build123d(pv.Sphere())
-
-
-def test_from_gmsh_missing_gmsh(monkeypatch):
-    monkeypatch.setitem(sys.modules, 'gmsh', None)
-    with pytest.raises(OptionalDependencyError, match=r'gmsh not installed'):
-        from_gmsh()
-
-
-def test_to_gmsh_missing_gmsh(monkeypatch):
-    monkeypatch.setitem(sys.modules, 'gmsh', None)
-    with pytest.raises(OptionalDependencyError, match=r'gmsh not installed'):
-        to_gmsh(pv.Sphere())
