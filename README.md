@@ -26,7 +26,6 @@
 | `[3mf]`        | lib3mf                  | 3MF read + write                    |
 | `[ifc]`        | ifcopenshell            | IFC read (with property sets)       |
 | `[iges]`       | pyiges[full]            | IGES read                           |
-| `[gmsh]`       | gmsh                    | gmsh bridge for FEA meshing         |
 | `[openscad]`   | (uses `openscad` CLI)   | SCAD read                           |
 | `[full]`       | all of the above        | every supported format              |
 
@@ -35,6 +34,8 @@
 cp314 wheels for any platform. 3.14 will be added once those wheels ship.
 
 trimesh interop is provided by pyvista core (`pyvista.from_trimesh`, `pyvista.to_trimesh`) and the `pyvista-trimesh` package's `.trimesh` accessor (install `pyvista-cad[trimesh]`); pyvista-cad does not duplicate it.
+
+FEA meshing via gmsh is intentionally out of scope. `gmsh` is GPLv2+ and would virally license any closed-source product that linked it, so `pyvista-cad`'s dependency set stays fully permissive (MIT / BSD / Apache, plus LGPL-with-exception for the OpenCascade and IFC backends). For CAD-to-tet workflows, drive `gmsh` directly and read the resulting `.msh` file back with `pv.read` (PyVista routes `.msh` through `meshio`); the `scikit-gmsh` package wraps the live-model API if you prefer that.
 
 ```bash
 pip install pyvista-cad           # DXF and glTF only
@@ -89,8 +90,9 @@ pl.show()
 ## Real-world workflow
 
 Load a STEP assembly, locate a part, drive it through gmsh to a
-tetrahedral FEA mesh, then clip to expose the interior. Needs the
-`[gmsh]` extra.
+tetrahedral FEA mesh, then clip to expose the interior. `pv.read`
+handles the resulting `.msh` file natively via `meshio`, so no extra
+PyVista dependency is needed.
 
 ```python
 import gmsh
@@ -109,18 +111,15 @@ try:
     gmsh.model.occ.synchronize()
     gmsh.option.setNumber('Mesh.MeshSizeMax', 2.0)
     gmsh.model.mesh.generate(3)
-    grid = pyvista_cad.from_gmsh()
+    gmsh.write('part.msh')
 finally:
     gmsh.finalize()
 
+grid = pv.read('part.msh')                          # via meshio
 grid = grid.extract_cells(grid.celltypes == 10)     # keep VTK_TETRA
 clip = grid.clip(normal='x', crinkle=True)
-clip.save('part_tets.vtu')                           # full tet mesh round-trips
+clip.save('part_tets.vtu')                          # full tet mesh round-trips
 ```
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/pyvista/pyvista-cad/main/doc/_static/readme_workflow.png" alt="A 3-part NIST build assembly. Three steps: the full assembly as read (CAD-style), the located PartCAD component highlighted against the muted rest, then that part meshed tetrahedrally with gmsh and crinkle-clipped to expose the colored tet interior." width="100%">
-</p>
 
 The Quick start uses bundled offline fixtures (`bracket_step_path()`, a parametric L-bracket committed as STEP; `drawing_dxf_path()`, a layered 2D drawing). The other examples pull real, openly licensed parts from `pyvista_cad.examples.downloads` (cached on first fetch) — the NIST AM Bench LPBF specimen and its 3-part build assembly.
 
@@ -134,8 +133,18 @@ The Quick start uses bundled offline fixtures (`bracket_step_path()`, a parametr
 | Load an IFC building and filter walls     | `mb = pv.read('b.ifc'); walls = mb.cad.find(ifc_type='IfcWall')`                          |
 | Read IFC property sets                    | `json.loads(block.field_data['cad.psets'][0])` returns the source `Pset_*` / `Qto_*` dict |
 | Convert build123d to PyVista              | `pyvista_cad.from_build123d(part)` (preserves color, label, transform)                    |
-| Mesh a STEP for FEA in gmsh               | `pyvista_cad.to_gmsh(...)` then gmsh; see `examples/05_workflows/cad_to_fea_tet_mesh.py`  |
+| Mesh a STEP for FEA in gmsh               | Drive `gmsh` directly, `gmsh.write('out.msh')`, then `pv.read('out.msh')` (uses `meshio`) |
 | Generate a signed distance field from CAD | see `examples/05_workflows/cad_to_signed_distance.py`                                     |
+
+## Licensing
+
+`pyvista-cad` is MIT. Every runtime dependency is either permissive
+(MIT / BSD / Apache) or LGPL with the OpenCascade exception. **No
+GPL code is pulled in by any extra**, which makes the package safe to
+use in closed-source / proprietary products subject to the standard
+LGPL dynamic-link obligations. See [LICENSES.md](LICENSES.md) for the
+full dependency-by-dependency breakdown, the LGPL compliance notes, and the rationale for not depending on
+`gmsh`.
 
 ## Fidelity and limitations
 

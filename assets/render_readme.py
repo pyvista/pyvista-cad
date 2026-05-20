@@ -131,15 +131,17 @@ def real_world_workflow() -> None:
     """README "Real-world workflow": locate a part, FEA-tet it, clip it.
 
     The 3-part NIST build assembly: the assembly as read, the located
-    PartCAD component highlighted, then that part driven through gmsh to
-    a tetrahedral FEA mesh and clipped to expose the tet interior.
+    PartCAD component highlighted, then that part driven through gmsh
+    to a tetrahedral FEA mesh and clipped to expose the tet interior.
+    The gmsh-written .msh file is read back through ``pv.read``
+    (meshio).
     """
     assembly = pv.read(downloads.step_assembly_path())
     print(assembly.cad.assembly_tree())
     matches = assembly.cad.find('*PartCAD')
     _path, _part = matches[0]
 
-    # Mesh the located part as tets with gmsh (the canonical CAD->FEA path).
+    msh_path = STATIC.parent / 'part_tets.msh'
     gmsh.initialize()
     try:
         gmsh.option.setNumber('General.Terminal', 0)
@@ -148,9 +150,11 @@ def real_world_workflow() -> None:
         gmsh.option.setNumber('Mesh.MeshSizeMax', 2.0)
         gmsh.option.setNumber('Mesh.MeshSizeMin', 0.5)
         gmsh.model.mesh.generate(3)
-        grid = pyvista_cad.from_gmsh()
+        gmsh.write(str(msh_path))
     finally:
         gmsh.finalize()
+    grid = pv.read(msh_path)
+    msh_path.unlink(missing_ok=True)
 
     grid = grid.extract_cells(grid.celltypes == 10)  # keep VTK_TETRA
     clip = grid.clip(normal='x', crinkle=True)

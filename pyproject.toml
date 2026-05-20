@@ -5,7 +5,7 @@ requires = ['setuptools>=77.0', 'setuptools_scm>=8']
 [project]
 name = 'pyvista-cad'
 dynamic = ['version']
-description = 'PyVista accessor and reader-registry plugin for CAD formats (STEP, IGES, BREP, DXF, 3MF, IFC, FCStd) and bridges to build123d, cadquery, OCP, and gmsh.'
+description = 'PyVista accessor and reader-registry plugin for CAD formats (STEP, IGES, BREP, DXF, 3MF, IFC, FCStd) and bridges to build123d, cadquery, and OCP.'
 readme = 'README.md'
 license = 'MIT'
 requires-python = '>=3.10'
@@ -54,7 +54,6 @@ step-light = ['cascadio>=0.0.17']
 '3mf' = ['lib3mf>=2.3']
 ifc = ['ifcopenshell>=0.7.0']
 iges = ['pyiges[full]>=0.3']
-gmsh = ['gmsh>=4.13']
 cadquery = ['cadquery>=2.4']
 trimesh = ['pyvista-trimesh>=0.1']
 # OpenSCAD support shells out to the `openscad` command-line binary and
@@ -62,7 +61,12 @@ trimesh = ['pyvista-trimesh>=0.1']
 # (an empty extra would install nothing and falsely imply pip can
 # satisfy the requirement). Install the `openscad` binary via the system
 # package manager instead.
-full = ['pyvista-cad[step,3mf,iges,ifc,gmsh,cadquery,trimesh]']
+#
+# gmsh is intentionally not a dependency (GPLv2+ would virally
+# contaminate any closed-source consumer). CAD-to-FEA tet meshing
+# remains a one-liner: drive gmsh directly, `gmsh.write('out.msh')`,
+# then `pv.read('out.msh')` (PyVista routes `.msh` through `meshio`).
+full = ['pyvista-cad[step,3mf,iges,ifc,cadquery,trimesh]']
 
 docs = [
   'pyvista-cad[full]',
@@ -186,7 +190,6 @@ markers = [
   'three_mf: requires the [3mf] extra (lib3mf direct) or [step] (Mesher)',
   'ifc: requires the [ifc] extra (ifcopenshell)',
   'iges: requires the [iges] extra (pyiges)',
-  'gmsh: requires the [gmsh] extra',
   'freecad: requires FreeCAD installed as a system package',
   'compose: cross-package integration test (requires .manifold and/or .trimesh installed)',
   'benchmark: performance regression test (skipped by default unless --benchmark-only)',

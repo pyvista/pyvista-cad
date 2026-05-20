@@ -1155,29 +1155,6 @@ class CadDataSetAccessor:
 
         return _impl(_as_polydata(self._dataset))
 
-    def to_gmsh(self, *, model_name: str = 'pyvista_cad') -> None:
-        """Install the dataset as the current gmsh model.
-
-        Examples
-        --------
-        >>> import gmsh
-        >>> import pyvista as pv
-        >>> import pyvista_cad
-        >>> gmsh.initialize()
-        >>> gmsh.option.setNumber('General.Terminal', 0)
-        >>> pv.Sphere().cad.to_gmsh()
-        >>> gmsh.model.getCurrent()
-        'pyvista_cad'
-        >>> gmsh.finalize()
-
-        """
-        from pyvista_cad._bridges.gmsh import to_gmsh as _impl
-
-        ds: Any = self._dataset
-        if not isinstance(ds, (pv.UnstructuredGrid, pv.PolyData)):
-            ds = ds.extract_surface(algorithm='dataset_surface')
-        _impl(ds, model_name=model_name)
-
     def to_dxf(
         self,
         path: str | os.PathLike[str],
@@ -2046,10 +2023,9 @@ class CadMultiBlockAccessor:
     # Outgoing conversion / writers (re-use the DataSet implementations).
     # Construction from external CAD objects is the module-level
     # ``pyvista_cad.from_build123d`` / ``from_cadquery`` / ``from_topods``
-    # / ``from_gmsh`` API; there is deliberately no
-    # ``.cad.from_*`` on either accessor (an accessor is bound to an
-    # existing dataset, so constructing a new one through it is a leaky
-    # idiom).
+    # API; there is deliberately no ``.cad.from_*`` on either accessor
+    # (an accessor is bound to an existing dataset, so constructing a
+    # new one through it is a leaky idiom).
     def to_build123d(self) -> Any:
         """Wrap as a faceted ``build123d.Compound``.
 
@@ -2112,29 +2088,6 @@ class CadMultiBlockAccessor:
         from pyvista_cad._bridges.topods import to_topods as _impl
 
         return _impl(_as_polydata(self._dataset))
-
-    def to_gmsh(self, *, model_name: str = 'pyvista_cad') -> None:
-        """Install this MultiBlock as the current gmsh model.
-
-        Examples
-        --------
-        >>> import gmsh
-        >>> import pyvista as pv
-        >>> import pyvista_cad
-        >>> gmsh.initialize()
-        >>> gmsh.option.setNumber('General.Terminal', 0)
-        >>> pv.MultiBlock([pv.Sphere()]).cad.to_gmsh()
-        >>> gmsh.model.getCurrent()
-        'pyvista_cad'
-        >>> gmsh.finalize()
-
-        """
-        from pyvista_cad._bridges.gmsh import to_gmsh as _impl
-
-        # MultiBlock.combine is contractually an UnstructuredGrid, which
-        # the gmsh bridge consumes directly.
-        ds: Any = self._dataset.combine(merge_points=True)
-        _impl(ds, model_name=model_name)
 
     def to_dxf(
         self,

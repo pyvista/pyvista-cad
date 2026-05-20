@@ -15,7 +15,6 @@ from pyvista_cad._bridges.cadquery import (
     from_cadquery as from_cadquery,
     to_cadquery as to_cadquery,
 )
-from pyvista_cad._bridges.gmsh import from_gmsh as from_gmsh, to_gmsh as to_gmsh
 from pyvista_cad._bridges.topods import from_topods as from_topods, to_topods as to_topods
 from pyvista_cad._errors import (
     CadError as CadError,

@@ -2,7 +2,7 @@
 
 Drives :mod:`pyvista_cad._accessor` to full line and branch coverage
 with real CAD data: the bundled examples, the ``tests/data`` fixture
-corpus, and live build123d / OCP / gmsh round-trips. Every
+corpus, and live build123d / OCP round-trips. Every
 test makes a behavioral assertion (cell counts, bounds, exact metadata
 values, raised error type and message, or a geometric invariant).
 """
@@ -18,12 +18,10 @@ import pytest
 # importing OCP" ImportError, which is not a ModuleNotFoundError.
 pytest.importorskip('build123d', exc_type=ImportError)
 pytest.importorskip('cadquery', exc_type=ImportError)
-pytest.importorskip('gmsh', exc_type=ImportError)
 pytest.importorskip('OCP', exc_type=ImportError)
 
 import build123d
 import cadquery as cq
-import gmsh
 import numpy as np
 from OCP.TopoDS import TopoDS_Shape
 from packaging.version import Version
@@ -705,14 +703,6 @@ def test_from_topods_and_to_topods_round_trip(
     assert poly.n_cells == 12
 
 
-def test_from_gmsh_and_to_gmsh(brep_box: pv.PolyData) -> None:
-    """``to_gmsh`` installs the mesh and ``from_gmsh`` returns a grid."""
-    brep_box.cad.to_gmsh(model_name='cov_model')
-    grid = pyvista_cad.from_gmsh('cov_model')
-    assert isinstance(grid, pv.UnstructuredGrid)
-    gmsh.finalize()
-
-
 # --------------------------------------------------------------------------- #
 # to_* outgoing converters / writers (DataSet).
 # --------------------------------------------------------------------------- #
@@ -848,23 +838,6 @@ def test_multiblock_to_dxf_combines(tmp_path, assembly: pv.MultiBlock) -> None:
     assert out.stat().st_size > 0
 
 
-def test_to_gmsh_imagedata_extracts_surface() -> None:
-    """A non-grid/non-poly dataset is surface-extracted before ``to_gmsh``."""
-    pv.ImageData(dimensions=(3, 3, 3)).cad.to_gmsh(model_name='cov_img')
-    grid = pyvista_cad.from_gmsh('cov_img')
-    assert isinstance(grid, pv.UnstructuredGrid)
-    gmsh.finalize()
-
-
-def test_multiblock_to_gmsh_imagedata_extracts_surface() -> None:
-    """A MultiBlock combining to non-poly is surface-extracted for gmsh."""
-    mb = pv.MultiBlock([pv.ImageData(dimensions=(3, 3, 3))])
-    mb.cad.to_gmsh(model_name='cov_mb_img')
-    grid = pyvista_cad.from_gmsh('cov_mb_img')
-    assert isinstance(grid, pv.UnstructuredGrid)
-    gmsh.finalize()
-
-
 def test_to_gltf_multiblock_skips_nested_and_failed_leaf(
     tmp_path,
 ) -> None:
@@ -918,14 +891,6 @@ def test_to_gltf_unconvertible_leaf_warns_and_continues(tmp_path) -> None:
         if b is not None and 'cad.label' in b.field_data
     }
     assert 'drop_me' not in labels
-
-
-def test_multiblock_to_gmsh(assembly: pv.MultiBlock) -> None:
-    """A MultiBlock ``to_gmsh`` combines and installs a model."""
-    assembly.cad.to_gmsh(model_name='cov_mb')
-    grid = pyvista_cad.from_gmsh('cov_mb')
-    assert isinstance(grid, pv.UnstructuredGrid)
-    gmsh.finalize()
 
 
 def test_multiblock_to_topods_b123d_cq(

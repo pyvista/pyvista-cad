@@ -39,13 +39,19 @@ SCAD are read-only.
 Bridges to other CAD libraries
 ------------------------------
 
-Convert between PyVista meshes and build123d, CadQuery, gmsh, and
-raw OCCT ``TopoDS`` shapes.
+Convert between PyVista meshes and build123d, CadQuery, and raw OCCT
+``TopoDS`` shapes.
 
 trimesh interop is provided by pyvista core
 (:func:`pyvista.from_trimesh`, :func:`pyvista.to_trimesh`) and by the
 ``pyvista-trimesh`` package's ``.trimesh`` accessor (install
 ``pyvista-cad[trimesh]``); pyvista-cad does not duplicate it.
+
+gmsh interop is intentionally out of scope so the package stays
+license-clean: ``gmsh`` is GPLv2+ and would virally license any
+closed-source consumer. For CAD-to-tet workflows drive ``gmsh``
+directly, write a ``.msh`` file, and read it back with
+``pv.read`` (PyVista routes ``.msh`` through ``meshio``).
 
 .. autosummary::
    :toctree: _autosummary
@@ -56,8 +62,6 @@ trimesh interop is provided by pyvista core
    to_cadquery
    from_topods
    to_topods
-   from_gmsh
-   to_gmsh
 
 CAD-view conversion helpers
 ---------------------------
@@ -91,9 +95,9 @@ traversal (:meth:`~CadMultiBlockAccessor.walk`,
 :meth:`~CadMultiBlockAccessor.flatten`).
 
 Construct PyVista meshes from external CAD objects with the
-module-level :func:`from_build123d`, :func:`from_cadquery`,
-:func:`from_topods`, and :func:`from_gmsh`
-functions (see *Bridges to other CAD libraries* above). The accessor
+module-level :func:`from_build123d`, :func:`from_cadquery`, and
+:func:`from_topods` functions (see *Bridges to other CAD libraries*
+above). The accessor
 exposes only ``to_*`` (outgoing) conversions; it is bound to an
 existing dataset, so it has no ``from_*`` constructors.
 
@@ -127,7 +131,6 @@ CadDataSetAccessor members
    CadDataSetAccessor.to_build123d
    CadDataSetAccessor.to_cadquery
    CadDataSetAccessor.to_topods
-   CadDataSetAccessor.to_gmsh
    CadDataSetAccessor.to_dxf
    CadDataSetAccessor.to_3mf
    CadDataSetAccessor.to_brep
@@ -157,7 +160,6 @@ CadMultiBlockAccessor members
    CadMultiBlockAccessor.to_build123d
    CadMultiBlockAccessor.to_cadquery
    CadMultiBlockAccessor.to_topods
-   CadMultiBlockAccessor.to_gmsh
    CadMultiBlockAccessor.to_dxf
    CadMultiBlockAccessor.to_3mf
    CadMultiBlockAccessor.to_brep

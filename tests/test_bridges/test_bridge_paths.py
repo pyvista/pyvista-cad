@@ -1,8 +1,7 @@
-"""Edge paths in the build123d and gmsh bridges with real objects.
+"""Edge paths in the build123d bridge with real objects.
 
 Covers the colour/label propagation, the single-child and childless
-``Compound`` branches, the ``_color_rgb`` coercion fallbacks, and the
-gmsh empty-model / unknown-element / ``UnstructuredGrid`` paths.
+``Compound`` branches, and the ``_color_rgb`` coercion fallbacks.
 """
 
 import numpy as np
@@ -13,7 +12,6 @@ import pyvista_cad
 from pyvista_cad._bridges.build123d import _color_rgb
 
 b3d = pytest.importorskip('build123d', exc_type=ImportError)
-gmsh = pytest.importorskip('gmsh')
 
 
 def test_color_rgb_none_object():
@@ -212,91 +210,3 @@ def test_color_of_rgb_only_stays_three_components():
     result = _color_of(Obj())
     assert result == pytest.approx((0.1, 0.2, 0.3))
     assert len(result) == 3
-
-
-@pytest.fixture
-def gmsh_session():
-    gmsh.initialize()
-    yield
-    gmsh.finalize()
-
-
-def test_from_gmsh_empty_model_returns_empty_grid(gmsh_session):
-    gmsh.model.add('empty')
-    gmsh.model.setCurrent('empty')
-    grid = pyvista_cad.from_gmsh('empty')
-    assert isinstance(grid, pv.UnstructuredGrid)
-    assert grid.n_cells == 0
-
-
-def test_from_gmsh_nodes_only_returns_point_cloud(gmsh_session):
-    """A model with nodes but no recognised elements yields an
-    UnstructuredGrid carrying the coordinates and zero cells."""
-    gmsh.model.add('nodes_only')
-    gmsh.model.setCurrent('nodes_only')
-    tag = gmsh.model.addDiscreteEntity(0)
-    gmsh.model.mesh.addNodes(0, tag, [1, 2, 3], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
-    grid = pyvista_cad.from_gmsh('nodes_only')
-    assert isinstance(grid, pv.UnstructuredGrid)
-    assert grid.n_cells == 0
-    assert grid.n_points == 3
-
-
-def test_to_gmsh_then_from_gmsh_named_model(gmsh_session):
-    src = pv.Sphere(theta_resolution=8, phi_resolution=8)
-    pyvista_cad.to_gmsh(src, model_name='named')
-    grid = pyvista_cad.from_gmsh('named')
-    assert grid.n_cells > 0
-    assert str(grid.field_data['cad.source_format'][0]) == 'gmsh'
-
-
-def test_to_gmsh_from_unstructured_grid(gmsh_session):
-    """``to_gmsh`` with an UnstructuredGrid exercises the
-    ``_iter_triangles`` extract-surface branch."""
-    grid = pv.Sphere(theta_resolution=8, phi_resolution=8).cast_to_unstructured_grid()
-    pyvista_cad.to_gmsh(grid, model_name='ug')
-    out = pyvista_cad.from_gmsh('ug')
-    assert out.n_cells > 0
-
-
-def test_from_gmsh_skips_higher_order_elements(gmsh_session):
-    """A 2nd-order mesh emits only element types absent from the
-    gmsh->VTK table (8/9/11), so every element is skipped and the grid
-    falls through the no-cells branch carrying just the node cloud."""
-    gmsh.model.add('o2')
-    gmsh.model.setCurrent('o2')
-    gmsh.model.occ.addBox(0, 0, 0, 1, 1, 1)
-    gmsh.model.occ.synchronize()
-    gmsh.model.mesh.generate(3)
-    gmsh.model.mesh.setOrder(2)
-    grid = pyvista_cad.from_gmsh('o2')
-    assert isinstance(grid, pv.UnstructuredGrid)
-    # 2nd-order surface/volume elements (gmsh types 9 / 11) are absent
-    # from the gmsh->VTK table and skipped; the node cloud is far larger
-    # than the handful of low-order edge cells that survive.
-    assert grid.n_points > 100 * max(grid.n_cells, 1)
-
-
-def test_to_gmsh_polydata_with_quads_triangulates(gmsh_session):
-    """A quad-faced PolyData drives the ``_iter_triangles`` PolyData
-    branch: quads are triangulated before export."""
-    plane = pv.Plane(i_resolution=3, j_resolution=3)
-    assert plane.faces.reshape(-1, 5)[0, 0] == 4  # quads
-    pyvista_cad.to_gmsh(plane, model_name='quads')
-    out = pyvista_cad.from_gmsh('quads')
-    assert out.n_cells > 0
-
-
-def test_from_gmsh_skips_unknown_element_type(gmsh_session):
-    """A model with only line elements (which map to a known type) plus a
-    discrete surface confirms the type lookup path, and a tet mesh round
-    trips through the volume-element branch."""
-    gmsh.model.add('tet')
-    gmsh.model.setCurrent('tet')
-    gmsh.model.occ.addBox(0, 0, 0, 1, 1, 1)
-    gmsh.model.occ.synchronize()
-    gmsh.model.mesh.generate(3)
-    grid = pyvista_cad.from_gmsh('tet')
-    assert grid.n_cells > 0
-    # Tetrahedra are VTK cell type 10.
-    assert 10 in set(grid.celltypes.tolist())

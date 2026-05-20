@@ -45,7 +45,6 @@ _FORBIDDEN = (
     'cascadio',
     'lib3mf',
     'ifcopenshell',
-    'gmsh',
     'pyiges',
     'cadquery',
     'pyvista.plotting',
