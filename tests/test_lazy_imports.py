@@ -97,9 +97,7 @@ def test_import_pyvista_cad_is_fast():
         text=True,
     )
     elapsed = float(result.stdout.strip())
-    assert elapsed < budget, (
-        f'import pyvista_cad took {elapsed:.3f}s (budget: {budget}s)'
-    )
+    assert elapsed < budget, f'import pyvista_cad took {elapsed:.3f}s (budget: {budget}s)'
 
 
 # Each entry: (id, trigger, modules-to-mask, extra-token, lib-token).
