@@ -181,12 +181,14 @@ filterwarnings = [
   'ignore::DeprecationWarning:ezdxf',
   'ignore::DeprecationWarning:pyparsing',
   'ignore::DeprecationWarning:build123d',
-  # pytest-benchmark emits this PytestBenchmarkWarning at config time
-  # when xdist is active because benchmarks can't run reliably in
-  # parallel. Our test cells use `-n auto`; the dedicated `benchmark`
-  # job does not, so benchmarks still run there. Ignore the warning so
-  # `filterwarnings = ['error']` does not upgrade it to a hard fail.
-  'ignore::pytest_benchmark.logger.PytestBenchmarkWarning',
+  # pytest-benchmark emits this warning at config time when xdist is
+  # active because benchmarks can't run reliably in parallel. Our test
+  # cells use `-n auto`; the dedicated `benchmark` job does not, so
+  # benchmarks still run there. Match by message text (not by warning
+  # class) so the filter does not force-import pytest_benchmark — the
+  # lazy-imports guardrail installs only core + pytest and would error
+  # at config time on "Failed to import filter module 'pytest_benchmark'".
+  'ignore:Benchmarks are automatically disabled because xdist plugin is active',
 ]
 testpaths = ['tests']
 xfail_strict = true
