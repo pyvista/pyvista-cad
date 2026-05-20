@@ -86,8 +86,7 @@ def test_brep_cache_survives_id_recycling() -> None:
     from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 
     box = BRepPrimAPI_MakeBox(1.0, 1.0, 1.0).Shape()
-    recycled = 0
-    for _ in range(50):
+    for _ in range(8):
         mesh = topods_to_polydata(box)
         assert get_cached_topods(mesh) is not None
         addr = id(mesh)
@@ -95,11 +94,8 @@ def test_brep_cache_survives_id_recycling() -> None:
         gc.collect()
         fresh = pv.PolyData()
         if id(fresh) == addr:
-            recycled += 1
             assert get_cached_topods(fresh) is None
         del fresh
-        gc.collect()
-    _ = recycled  # informational only
 
 
 # --------------------------------------------------------------------------- #

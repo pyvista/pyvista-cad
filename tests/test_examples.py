@@ -70,6 +70,8 @@ def _has_network(host: str = 'raw.githubusercontent.com') -> bool:
 
 
 _NETWORK = _has_network()
+
+
 _requires_network = pytest.mark.skipif(
     not _NETWORK,
     reason='no network: live pooch fetch unavailable in this sandbox',

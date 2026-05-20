@@ -1,6 +1,7 @@
 """Guard: ``import pyvista_cad`` must not import any heavy CAD backend."""
 
 import importlib
+import os
 import subprocess
 import sys
 import textwrap
@@ -73,7 +74,13 @@ def test_import_pyvista_cad_is_fast():
     in this repo; 500 ms is a CI-noise-tolerant ceiling that still
     catches the kind of regression (e.g. eager-importing OCP) the
     no-heavy-deps invariant exists to prevent.
+
+    Under pytest-xdist the budget is relaxed to 1.0 s because parallel
+    workers contend for CPU on 2-core CI runners (Windows especially).
+    The dedicated ``lazy-imports`` CI job runs serial and still enforces
+    the 0.5 s budget, so regressions are still caught.
     """
+    budget = 1.0 if os.environ.get('PYTEST_XDIST_WORKER') else 0.5
     script = textwrap.dedent(
         """
         import time
@@ -90,7 +97,7 @@ def test_import_pyvista_cad_is_fast():
         text=True,
     )
     elapsed = float(result.stdout.strip())
-    assert elapsed < 0.5, f'import pyvista_cad took {elapsed:.3f}s (budget: 0.5s)'
+    assert elapsed < budget, f'import pyvista_cad took {elapsed:.3f}s (budget: {budget}s)'
 
 
 # Each entry: (id, trigger, modules-to-mask, extra-token, lib-token).

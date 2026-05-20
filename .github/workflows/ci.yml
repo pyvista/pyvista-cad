@@ -19,31 +19,52 @@ jobs:
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
       - run: uv sync --extra dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy src/pyvista_cad
 
   test:
+    name: test (${{ matrix.os }} / py${{ matrix.python-version }} / ${{ matrix.extras }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      # Targeted matrix: Ubuntu runs the full Python × extras sweep
+      # because it owns the coverage upload and is the cheapest runner;
+      # macOS and Windows only get the lowest/highest supported Python
+      # times the cheapest extras combos that still exercise platform
+      # specifics (DLL/dylib loaders, path handling). Skipping the
+      # middle Pythons on macOS/Windows trades a slim regression
+      # surface for ~3× fewer billed jobs.
+      #
+      # 3.14 is intentionally absent: every test extra transitively
+      # pulls `cadquery` (dev -> docs -> full -> cadquery), and
+      # `cadquery-ocp` ships no cp314 wheel for any platform/version,
+      # so the env is uninstallable on 3.14. Re-add once cadquery-ocp
+      # publishes cp314 wheels. requires-python stays `>=3.10`.
       matrix:
-        os: [ubuntu-latest, macos-14, windows-latest]
-        # 3.14 is intentionally absent: every test extra transitively
-        # pulls `cadquery` (dev -> docs -> full -> cadquery), and
-        # `cadquery-ocp` ships no cp314 wheel for any platform/version,
-        # so the env is uninstallable on 3.14. Re-add once cadquery-ocp
-        # publishes cp314 wheels. requires-python stays `>=3.10`.
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-        # `dev,full` carries `step-light` (cascadio) so the cascadio STEP
-        # backend E2E runs in CI; `openscad` is installed via apt on Linux
-        # so the SCAD reader E2E runs there too. One combination gaining
-        # these is enough — the matrix shape is unchanged.
-        extras: ["dev", "dev,step", "dev,full,step-light"]
-        exclude:
-          - os: windows-latest
-            extras: "dev,full,step-light"
+        include:
+          # Ubuntu — full Python sweep × all extras
+          - { os: ubuntu-latest, python-version: "3.10", extras: "dev" }
+          - { os: ubuntu-latest, python-version: "3.11", extras: "dev" }
+          - { os: ubuntu-latest, python-version: "3.12", extras: "dev" }
+          - { os: ubuntu-latest, python-version: "3.13", extras: "dev" }
+          - { os: ubuntu-latest, python-version: "3.10", extras: "dev,step" }
+          - { os: ubuntu-latest, python-version: "3.13", extras: "dev,step" }
+          # Coverage upload cell.
+          - { os: ubuntu-latest, python-version: "3.13", extras: "dev,full,step-light", coverage: true }
+          # macOS — minimal: lowest + highest Python only
+          - { os: macos-14, python-version: "3.10", extras: "dev" }
+          - { os: macos-14, python-version: "3.13", extras: "dev,step" }
+          # Windows — minimal; `dev,full,step-light` already excluded
+          # historically because cascadio lacks Windows wheels.
+          - { os: windows-latest, python-version: "3.10", extras: "dev" }
+          - { os: windows-latest, python-version: "3.13", extras: "dev,step" }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,9 +72,13 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
       - name: Set up headless display
         uses: pyvista/setup-headless-display-action@v4
-      - name: Install system packages for OCCT / gmsh backends
+      - name: Install system packages for OCCT backends
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -62,10 +87,33 @@ jobs:
             libocct-data-exchange-dev libocct-foundation-dev xvfb openscad
       - name: Install dependencies
         run: uv sync --extra ${{ matrix.extras }}
+      - name: Cache pooch downloads
+        # `pyvista_cad.examples.downloads` fetches multi-MB CAD fixtures
+        # from raw.githubusercontent.com / huggingface on first use
+        # (~20s per cell, cold). The pooch registry is hard-coded in
+        # downloads.py with sha256 pins, so hashing that file alone is
+        # a complete cache key — any registry change rotates the key
+        # and forces a re-fetch. `PYVISTA_CAD_USERDATA_PATH` overrides
+        # pooch's default OS cache dir to a workspace-local path so
+        # `actions/cache` can pick it up uniformly across runners.
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.pooch-cache/pyvista_cad
+          key: pooch-${{ runner.os }}-${{ hashFiles('src/pyvista_cad/examples/downloads.py') }}
+          restore-keys: |
+            pooch-${{ runner.os }}-
+      - name: Run tests (coverage cell)
+        if: matrix.coverage
+        env:
+          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache/pyvista_cad
+        run: uv run pytest tests/ -n auto --cov --cov-report=xml -v
       - name: Run tests
-        run: uv run pytest tests/ --cov --cov-report=xml -v
+        if: ${{ !matrix.coverage }}
+        env:
+          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache/pyvista_cad
+        run: uv run pytest tests/ -n auto -v
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' && matrix.extras == 'dev,full,step-light'
+        if: matrix.coverage
         uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
@@ -94,6 +142,10 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
       - name: Install minimal (core + pytest only, no optional backends)
         # pytest-pyvista is a test plugin (not a CAD backend); it owns
         # the `image_cache_dir` pytest ini option, so omitting it makes
@@ -121,6 +173,10 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
       - uses: pyvista/setup-headless-display-action@v4
       - name: Install [dev,full] for end-to-end perf cases
         run: uv sync --extra dev --extra full
@@ -150,6 +206,11 @@ jobs:
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
       - run: uv build
       - uses: actions/upload-artifact@v4
         with:
