@@ -98,19 +98,19 @@ jobs:
         # `actions/cache` can pick it up uniformly across runners.
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/.pooch-cache
+          path: ${{ github.workspace }}/.pooch-cache/pyvista_cad
           key: pooch-${{ runner.os }}-${{ hashFiles('src/pyvista_cad/examples/downloads.py') }}
           restore-keys: |
             pooch-${{ runner.os }}-
       - name: Run tests (coverage cell)
         if: matrix.coverage
         env:
-          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache
+          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache/pyvista_cad
         run: uv run pytest tests/ -n auto --cov --cov-report=xml -v
       - name: Run tests
         if: ${{ !matrix.coverage }}
         env:
-          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache
+          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache/pyvista_cad
         run: uv run pytest tests/ -n auto -v
       - name: Upload coverage
         if: matrix.coverage
