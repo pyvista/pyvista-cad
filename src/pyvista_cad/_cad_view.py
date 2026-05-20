@@ -354,8 +354,8 @@ def topods_to_edges(
                 eexp.Next()
                 continue
             offset = len(points)
-            for k in range(node_idx.Lower(), node_idx.Upper() + 1):
-                node = tri.Node(node_idx.Value(k))
+            for k in node_idx:
+                node = tri.Node(k)
                 node.Transform(trsf)
                 points.append((node.X(), node.Y(), node.Z()))
             lines.append(n)

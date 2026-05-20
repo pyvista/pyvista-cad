@@ -50,6 +50,28 @@ def test_topods_to_edges_returns_polylines(block_with_hole):
     assert len(np.unique(edges.cell_data['cad.edge_id'])) == edges.n_cells
 
 
+def test_topods_to_edges_node_coordinates_are_finite(block_with_hole):
+    """Regression: ``TColStd_Array1OfInteger`` iteration yields node indices directly.
+
+    On OCP 7.8+, iterating a ``TColStd_Array1OfInteger`` yields the array
+    values themselves. The previous code took a 1-based ``range(Lower, Upper+1)``
+    counter and passed it back through ``node_idx.Value(k)``, treating an int as
+    a wrapper; that produced garbage coordinates or raised
+    ``AttributeError``/``TypeError`` on OCP 7.8+.
+    """
+    edges = topods_to_edges(block_with_hole, linear_deflection=0.3)
+    pts = edges.points
+    assert pts.shape[1] == 3
+    assert np.all(np.isfinite(pts)), 'edge point coordinates must be finite'
+    # Source block is 20 by 12 by 8 mm; every coordinate must lie inside it.
+    assert pts[:, 0].min() >= -0.1
+    assert pts[:, 0].max() <= 20.1
+    assert pts[:, 1].min() >= -0.1
+    assert pts[:, 1].max() <= 12.1
+    assert pts[:, 2].min() >= -0.1
+    assert pts[:, 2].max() <= 8.1
+
+
 def test_edge_kind_classifies_lines_and_circles(block_with_hole):
     edges = topods_to_edges(block_with_hole, linear_deflection=0.3)
     kinds = set(np.unique(edges.cell_data['cad.edge_kind']).tolist())
