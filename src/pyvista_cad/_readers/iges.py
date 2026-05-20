@@ -3,6 +3,8 @@
 import os
 from typing import TYPE_CHECKING, Any
 
+from pyvista_cad._uri import require_local_path
+
 if TYPE_CHECKING:
     import pyvista as pv
 
@@ -54,6 +56,7 @@ def read_iges(
         on the IGES content).
 
     """
+    require_local_path(path)
     from pyvista_cad._backends._pyiges import read_iges_internal
 
     return read_iges_internal(

@@ -17,6 +17,8 @@ from typing import Any
 
 import pyvista as pv
 
+from pyvista_cad._uri import require_local_path
+
 
 @pv.register_reader('.dxf')
 def read_dxf(
@@ -81,6 +83,7 @@ def read_dxf(
     'dxf'
 
     """
+    require_local_path(path)
     from pyvista_cad._backends._ezdxf import read_dxf_internal
 
     return read_dxf_internal(

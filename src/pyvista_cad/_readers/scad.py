@@ -5,6 +5,8 @@ from typing import Any
 
 import pyvista as pv
 
+from pyvista_cad._uri import require_local_path
+
 
 @pv.register_reader('.scad')
 def read_scad(
@@ -46,6 +48,7 @@ def read_scad(
         Tessellated mesh.
 
     """
+    require_local_path(path)
     from pyvista_cad._backends._openscad import read_scad_internal
 
     return read_scad_internal(path, binary=binary, args=args, timeout=timeout)

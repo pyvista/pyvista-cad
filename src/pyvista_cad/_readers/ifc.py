@@ -5,6 +5,8 @@ from typing import Any
 
 import pyvista as pv
 
+from pyvista_cad._uri import require_local_path
+
 
 @pv.register_reader('.ifc')
 def read_ifc(
@@ -54,6 +56,7 @@ def read_ifc(
     'ifc'
 
     """
+    require_local_path(path)
     from pyvista_cad._backends._ifcopenshell import read_ifc_internal
 
     return read_ifc_internal(path, include=include, use_world_coords=use_world_coords)
