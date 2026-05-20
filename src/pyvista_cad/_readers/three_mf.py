@@ -5,6 +5,8 @@ from typing import Any
 
 import pyvista as pv
 
+from pyvista_cad._uri import require_local_path
+
 
 @pv.register_reader('.3mf')
 def read_three_mf(
@@ -44,6 +46,7 @@ def read_three_mf(
     '3mf'
 
     """
+    require_local_path(path)
     from pyvista_cad._backends._lib3mf import read_three_mf_internal
 
     return read_three_mf_internal(path)

@@ -5,6 +5,8 @@ from typing import Any
 
 import pyvista as pv
 
+from pyvista_cad._uri import require_local_path
+
 
 @pv.register_reader('.fcstd')
 def read_fcstd(
@@ -42,6 +44,7 @@ def read_fcstd(
         One block per FreeCAD part.
 
     """
+    require_local_path(path)
     from pyvista_cad._backends._freecad import read_fcstd_internal
 
     return read_fcstd_internal(

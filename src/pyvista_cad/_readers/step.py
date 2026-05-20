@@ -23,6 +23,7 @@ import numpy as np
 import pyvista as pv
 
 from pyvista_cad._errors import CadWriteError, OptionalDependencyError
+from pyvista_cad._uri import require_local_path
 
 
 def _resolve_backend(
@@ -126,6 +127,7 @@ def read_step(
     'step'
 
     """
+    require_local_path(path)
     backend_name = _resolve_backend(backend)
     if backend_name == 'build123d':
         from pyvista_cad._backends._build123d import read_step as _impl

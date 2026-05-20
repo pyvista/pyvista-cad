@@ -14,6 +14,8 @@ from typing import Any
 
 import pyvista as pv
 
+from pyvista_cad._uri import require_local_path
+
 
 def read_gltf(
     path: str | os.PathLike[str],
@@ -47,6 +49,7 @@ def read_gltf(
     'gltf'
 
     """
+    require_local_path(path)
     from pyvista_cad._backends._gltf import read_gltf_internal
 
     return read_gltf_internal(path)

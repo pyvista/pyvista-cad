@@ -6,6 +6,7 @@ from typing import Any
 import pyvista as pv
 
 from pyvista_cad._errors import CadReadError, CadWriteError, OptionalDependencyError
+from pyvista_cad._uri import require_local_path
 
 
 def _require_ocp() -> Any:
@@ -50,6 +51,7 @@ def read_brep(
         Tessellated surface mesh.
 
     """
+    require_local_path(path)
     _require_ocp()
     from OCP.BRep import BRep_Builder
     from OCP.BRepTools import BRepTools
