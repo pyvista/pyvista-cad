@@ -41,12 +41,6 @@ jobs:
       # specifics (DLL/dylib loaders, path handling). Skipping the
       # middle Pythons on macOS/Windows trades a slim regression
       # surface for ~3× fewer billed jobs.
-      #
-      # 3.14 is intentionally absent: every test extra transitively
-      # pulls `cadquery` (dev -> docs -> full -> cadquery), and
-      # `cadquery-ocp` ships no cp314 wheel for any platform/version,
-      # so the env is uninstallable on 3.14. Re-add once cadquery-ocp
-      # publishes cp314 wheels. requires-python stays `>=3.10`.
       matrix:
         include:
           # Ubuntu — full Python sweep × all extras
@@ -54,17 +48,18 @@ jobs:
           - { os: ubuntu-latest, python-version: "3.11", extras: "dev" }
           - { os: ubuntu-latest, python-version: "3.12", extras: "dev" }
           - { os: ubuntu-latest, python-version: "3.13", extras: "dev" }
+          - { os: ubuntu-latest, python-version: "3.14", extras: "dev" }
           - { os: ubuntu-latest, python-version: "3.10", extras: "dev,step" }
-          - { os: ubuntu-latest, python-version: "3.13", extras: "dev,step" }
+          - { os: ubuntu-latest, python-version: "3.14", extras: "dev,step" }
           # Coverage upload cell.
-          - { os: ubuntu-latest, python-version: "3.13", extras: "dev,full,step-light", coverage: true }
+          - { os: ubuntu-latest, python-version: "3.14", extras: "dev,full,step-light", coverage: true }
           # macOS — minimal: lowest + highest Python only
           - { os: macos-14, python-version: "3.10", extras: "dev" }
-          - { os: macos-14, python-version: "3.13", extras: "dev,step" }
+          - { os: macos-14, python-version: "3.14", extras: "dev,step" }
           # Windows — minimal; `dev,full,step-light` already excluded
           # historically because cascadio lacks Windows wheels.
           - { os: windows-latest, python-version: "3.10", extras: "dev" }
-          - { os: windows-latest, python-version: "3.13", extras: "dev,step" }
+          - { os: windows-latest, python-version: "3.14", extras: "dev,step" }
     steps:
       - uses: actions/checkout@v4
         with:
