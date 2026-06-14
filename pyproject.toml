@@ -92,7 +92,7 @@ dev = [
   # type-checker are pinned exactly: their patch/minor releases change
   # diagnostics and would flake CI against a green local tree.
   'mypy==2.1.0',
-  'ruff==0.15.16',
+  'ruff==0.15.17',
   'pytest>=8.0',
   'pytest-benchmark>=4.0',
   'pytest-cov>=5.0',
