@@ -142,7 +142,20 @@ Issues = 'https://github.com/pyvista/pyvista-cad/issues'
 Repository = 'https://github.com/pyvista/pyvista-cad'
 
 [tool.uv]
-override-dependencies = ['cadquery-ocp>=7.9', 'vtk>=9.4']
+# build123d >= 0.11 depends on `cadquery-ocp-novtk` (the external-VTK OCP
+# build) while cadquery depends on the VTK-bundled `cadquery-ocp`.
+# Installing both into one env (the `full`/`docs` cells do) collides on
+# the shared `OCP/` namespace: novtk's build omits `IVtkOCC` internals,
+# so `import cadquery` dies with `cannot import name 'IVtkOCC_Shape'`.
+# The always-false marker overrides build123d's edge to novtk out of the
+# graph, forcing the whole env onto the single full `cadquery-ocp` (a
+# superset that satisfies build123d too). Drop once the ecosystem
+# converges on one OCP variant.
+override-dependencies = [
+  'cadquery-ocp>=7.9',
+  'vtk>=9.4',
+  'cadquery-ocp-novtk ; python_version < "3.0"',
+]
 # numpy 2.5 is not yet supported by the pinned VTK (its
 # vtkmodules/util/numpy_support does `array.shape = ...`, which numpy 2.5
 # deprecates -> our `filterwarnings = error` turns it into a hard test
