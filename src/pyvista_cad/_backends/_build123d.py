@@ -80,7 +80,14 @@ def read_step(
         children = getattr(r, 'children', None)
         if children is not None and len(list(children)) > 0:
             return False
-        wrapped = getattr(r, 'wrapped', None)
+        # build123d < 0.11 returned ``None`` from ``.wrapped`` for an empty
+        # shape; >= 0.11 makes ``wrapped`` a property that ``assert``s the
+        # underlying TopoDS object is truthy, so reading it on an empty
+        # Compound raises AssertionError. Both signal "no shape" -> empty.
+        try:
+            wrapped = getattr(r, 'wrapped', None)
+        except AssertionError:
+            return True
         if wrapped is None:
             return True
         # A Compound with no sub-shapes has IsNull() False but no TopoDS_Iterator
