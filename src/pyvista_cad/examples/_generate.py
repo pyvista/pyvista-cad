@@ -101,8 +101,12 @@ def _generate_bracket_step(path: Path) -> None:
             _ = hole_sketch
         b3d.extrude(amount=-thickness, mode=b3d.Mode.SUBTRACT)
 
-    bracket.part.label = 'bracket'
-    b3d.export_step(bracket.part, str(path))
+    # build123d >= 0.11 types ``BuildPart.part`` as ``Part | None``; the
+    # part is always present after a populated builder context.
+    part = bracket.part
+    assert part is not None
+    part.label = 'bracket'
+    b3d.export_step(part, str(path))
 
 
 def _generate_drawing_dxf(path: Path) -> None:
