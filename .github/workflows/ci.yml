@@ -91,7 +91,7 @@ jobs:
         # and forces a re-fetch. `PYVISTA_CAD_USERDATA_PATH` overrides
         # pooch's default OS cache dir to a workspace-local path so
         # `actions/cache` can pick it up uniformly across runners.
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.pooch-cache/pyvista_cad
           key: pooch-${{ runner.os }}-${{ hashFiles('src/pyvista_cad/examples/downloads.py') }}
