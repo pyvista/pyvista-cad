@@ -152,7 +152,7 @@ def test_read_step_cascadio_backend_dispatch() -> None:
     """Explicitly selecting the cascadio backend dispatches to the cascadio
     implementation and returns real geometry.
 
-    The Linux ``dev,all,step-light`` CI combination installs cascadio via
+    The Linux ``dev,full,step-light`` CI combination installs cascadio via
     the ``step-light`` extra, so this path is exercised in CI; it skips
     cleanly where cascadio is absent.
     """

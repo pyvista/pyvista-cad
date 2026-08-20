@@ -26,7 +26,7 @@ The mandate is only meaningful when the full optional toolchain is
 installed (build123d, OCP, lib3mf, cascadio, ...). On a thin matrix cell
 (``dev`` only) most readers/bridges are import-skipped and would sit far
 below 90% through no regression, so the contract self-skips unless the
-full toolchain is importable. The CI ``dev,all,step-light`` Linux cell
+full toolchain is importable. The CI ``dev,full,step-light`` Linux cell
 has everything and is where this gate bites.
 
 The nested ``pytest`` run is deselected from re-running this test
@@ -106,7 +106,7 @@ def test_per_file_coverage_contract(tmp_path: Path) -> None:
         pytest.skip(
             f'full optional toolchain absent ({missing}); the >=90% floor is '
             'only enforceable with all backends installed (CI '
-            'dev,all,step-light cell)'
+            'dev,full,step-light cell)'
         )
 
     data_file = tmp_path / '.coverage'
