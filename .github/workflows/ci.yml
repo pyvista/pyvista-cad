@@ -52,7 +52,12 @@ jobs:
           - { os: ubuntu-latest, python-version: "3.10", extras: "dev,step" }
           - { os: ubuntu-latest, python-version: "3.14", extras: "dev,step" }
           # Coverage upload cell.
-          - { os: ubuntu-latest, python-version: "3.14", extras: "dev,full,step-light", coverage: true }
+          - {
+              os: ubuntu-latest,
+              python-version: "3.14",
+              extras: "dev,full,step-light",
+              coverage: true,
+            }
           # macOS — minimal: lowest + highest Python only
           - { os: macos-14, python-version: "3.10", extras: "dev" }
           - { os: macos-14, python-version: "3.14", extras: "dev,step" }

@@ -18,16 +18,16 @@
 
 ## Install matrix
 
-| Extra          | Adds                    | Formats unlocked                    |
-| -------------- | ----------------------- | ----------------------------------- |
-| (base)         | ezdxf                   | DXF read + write, glTF read + write |
-| `[step]`       | build123d, cadquery-ocp | STEP, BREP, FCStd, build123d bridge |
-| `[step-light]` | cascadio                | STEP (read-only, faster, no colors) |
-| `[3mf]`        | lib3mf                  | 3MF read + write                    |
-| `[ifc]`        | ifcopenshell            | IFC read (with property sets)       |
-| `[iges]`       | pyiges[full]            | IGES read                           |
-| `[openscad]`   | (uses `openscad` CLI)   | SCAD read                           |
-| `[full]`       | all of the above        | every supported format              |
+| Extra          | Adds                    | Formats unlocked                                          |
+| -------------- | ----------------------- | --------------------------------------------------------- |
+| (base)         | ezdxf                   | DXF read + write, glTF read + write                       |
+| `[step]`       | build123d, cadquery-ocp | STEP, BREP, FCStd, IGES (`ocp` backend), build123d bridge |
+| `[step-light]` | cascadio                | STEP (read-only, faster, no colors)                       |
+| `[3mf]`        | lib3mf                  | 3MF read + write                                          |
+| `[ifc]`        | ifcopenshell            | IFC read (with property sets)                             |
+| `[iges]`       | pyiges[full]            | IGES read (`pyiges` backend, default)                     |
+| `[openscad]`   | (uses `openscad` CLI)   | SCAD read                                                 |
+| `[full]`       | all of the above        | every supported format                                    |
 
 **Python support:** 3.10 – 3.14.
 
@@ -47,10 +47,10 @@ pip install pyvista-cad[full]     # everything
 import pyvista as pv
 import pyvista_cad  # registers the .cad accessor and reader entries
 
-mesh = pv.read('part.step')              # MultiBlock of parts with cad.color, cad.label
+mesh = pv.read('part.step')  # MultiBlock of parts with cad.color, cad.label
 mesh.plot(show_edges=True)
 
-floorplan = pv.read('floor.dxf')         # PolyData with Layer cell data
+floorplan = pv.read('floor.dxf')  # PolyData with Layer cell data
 layers = floorplan.cad.split_by_layer()  # MultiBlock keyed on layer
 ```
 
@@ -69,10 +69,10 @@ from pyvista_cad.examples import downloads
 
 mb = pyvista_cad.read_step(downloads.step_part_path())  # NIST AM Bench specimen
 
-mb.cad.plot()                       # shaded faces + topological edges
+mb.cad.plot()  # shaded faces + topological edges
 
 # Or compose it into a scene, color faces by a scalar, keep the edges:
-part = mb[0]                        # a cached block keeps its B-rep
+part = mb[0]  # a cached block keeps its B-rep
 part['height'] = part.points[:, 2]
 pl = pv.Plotter()
 pl.cad.add(part, scalars='height', cmap='viridis')
@@ -99,8 +99,8 @@ import pyvista_cad
 from pyvista_cad.examples import downloads
 
 assembly = pv.read(downloads.step_assembly_path())  # 3-part NIST build assembly
-print(assembly.cad.assembly_tree())                 # nested dict of block names
-matches = assembly.cad.find('*PartCAD')             # glob -> list of (path, block)
+print(assembly.cad.assembly_tree())  # nested dict of block names
+matches = assembly.cad.find('*PartCAD')  # glob -> list of (path, block)
 path, part = matches[0]
 
 gmsh.initialize()
@@ -113,10 +113,10 @@ try:
 finally:
     gmsh.finalize()
 
-grid = pv.read('part.msh')                          # via meshio
-grid = grid.extract_cells(grid.celltypes == 10)     # keep VTK_TETRA
+grid = pv.read('part.msh')  # via meshio
+grid = grid.extract_cells(grid.celltypes == 10)  # keep VTK_TETRA
 clip = grid.clip(normal='x', crinkle=True)
-clip.save('part_tets.vtu')                          # full tet mesh round-trips
+clip.save('part_tets.vtu')  # full tet mesh round-trips
 ```
 
 The Quick start uses bundled offline fixtures (`bracket_step_path()`, a parametric L-bracket committed as STEP; `drawing_dxf_path()`, a layered 2D drawing). The other examples pull real, openly licensed parts from `pyvista_cad.examples.downloads` (cached on first fetch) — the NIST AM Bench LPBF specimen and its 3-part build assembly.
@@ -143,6 +143,31 @@ use in closed-source / proprietary products subject to the standard
 LGPL dynamic-link obligations. See [LICENSES.md](LICENSES.md) for the
 full dependency-by-dependency breakdown, the LGPL compliance notes, and the rationale for not depending on
 `gmsh`.
+
+## IGES backends
+
+`read_iges` has two readers behind it.
+
+| `backend=`           | Needs    | Speed                              | Trimmed surfaces                                    | IGES level metadata        |
+| -------------------- | -------- | ---------------------------------- | --------------------------------------------------- | -------------------------- |
+| `'pyiges'` (default) | `[iges]` | Pure Python, slow on large files   | Ignored: the full underlying surface is tessellated | `cad.level` / `cad.levels` |
+| `'ocp'`              | `[step]` | OCCT in C++, roughly 10-30x faster | Clipped to the type-144 trimming curves             | none                       |
+
+```python
+import pyvista_cad
+
+mesh = pyvista_cad.read_iges('scan.igs', backend='ocp', linear_deflection=0.1)
+mesh.cad.plot()
+```
+
+The default is unchanged, so `pv.read('part.igs')` still goes through
+pyiges. `pv.read` accepts no reader keywords, so selecting the OCCT
+backend means calling `read_iges` directly.
+
+On a 4 MB, 4615-entity impeller the pyiges path takes ~20 s and the OCCT
+path ~0.8 s. The gap widens with file size, so reach for `'ocp'` on
+anything from a scanner or a CMM. Use `'pyiges'` when you need the
+per-entity level numbers.
 
 ## Fidelity and limitations
 
