@@ -47,10 +47,10 @@ pip install pyvista-cad[full]     # everything
 import pyvista as pv
 import pyvista_cad  # registers the .cad accessor and reader entries
 
-mesh = pv.read('part.step')  # MultiBlock of parts with cad.color, cad.label
+mesh = pv.read('part.step')              # MultiBlock of parts with cad.color, cad.label
 mesh.plot(show_edges=True)
 
-floorplan = pv.read('floor.dxf')  # PolyData with Layer cell data
+floorplan = pv.read('floor.dxf')         # PolyData with Layer cell data
 layers = floorplan.cad.split_by_layer()  # MultiBlock keyed on layer
 ```
 
@@ -69,10 +69,10 @@ from pyvista_cad.examples import downloads
 
 mb = pyvista_cad.read_step(downloads.step_part_path())  # NIST AM Bench specimen
 
-mb.cad.plot()  # shaded faces + topological edges
+mb.cad.plot()                       # shaded faces + topological edges
 
 # Or compose it into a scene, color faces by a scalar, keep the edges:
-part = mb[0]  # a cached block keeps its B-rep
+part = mb[0]                        # a cached block keeps its B-rep
 part['height'] = part.points[:, 2]
 pl = pv.Plotter()
 pl.cad.add(part, scalars='height', cmap='viridis')
@@ -99,8 +99,8 @@ import pyvista_cad
 from pyvista_cad.examples import downloads
 
 assembly = pv.read(downloads.step_assembly_path())  # 3-part NIST build assembly
-print(assembly.cad.assembly_tree())  # nested dict of block names
-matches = assembly.cad.find('*PartCAD')  # glob -> list of (path, block)
+print(assembly.cad.assembly_tree())                 # nested dict of block names
+matches = assembly.cad.find('*PartCAD')             # glob -> list of (path, block)
 path, part = matches[0]
 
 gmsh.initialize()
@@ -113,10 +113,10 @@ try:
 finally:
     gmsh.finalize()
 
-grid = pv.read('part.msh')  # via meshio
-grid = grid.extract_cells(grid.celltypes == 10)  # keep VTK_TETRA
+grid = pv.read('part.msh')                          # via meshio
+grid = grid.extract_cells(grid.celltypes == 10)     # keep VTK_TETRA
 clip = grid.clip(normal='x', crinkle=True)
-clip.save('part_tets.vtu')  # full tet mesh round-trips
+clip.save('part_tets.vtu')                          # full tet mesh round-trips
 ```
 
 The Quick start uses bundled offline fixtures (`bracket_step_path()`, a parametric L-bracket committed as STEP; `drawing_dxf_path()`, a layered 2D drawing). The other examples pull real, openly licensed parts from `pyvista_cad.examples.downloads` (cached on first fetch) — the NIST AM Bench LPBF specimen and its 3-part build assembly.
