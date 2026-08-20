@@ -18,16 +18,16 @@
 
 ## Install matrix
 
-| Extra          | Adds                    | Formats unlocked                    |
-| -------------- | ----------------------- | ----------------------------------- |
-| (base)         | ezdxf                   | DXF read + write, glTF read + write |
-| `[step]`       | build123d, cadquery-ocp | STEP, BREP, FCStd, build123d bridge |
-| `[step-light]` | cascadio                | STEP (read-only, faster, no colors) |
-| `[3mf]`        | lib3mf                  | 3MF read + write                    |
-| `[ifc]`        | ifcopenshell            | IFC read (with property sets)       |
-| `[iges]`       | pyiges[full]            | IGES read                           |
-| `[openscad]`   | (uses `openscad` CLI)   | SCAD read                           |
-| `[full]`       | all of the above        | every supported format              |
+| Extra          | Adds                    | Formats unlocked                                          |
+| -------------- | ----------------------- | --------------------------------------------------------- |
+| (base)         | ezdxf                   | DXF read + write, glTF read + write                       |
+| `[step]`       | build123d, cadquery-ocp | STEP, BREP, FCStd, IGES (`ocp` backend), build123d bridge |
+| `[step-light]` | cascadio                | STEP (read-only, faster, no colors)                       |
+| `[3mf]`        | lib3mf                  | 3MF read + write                                          |
+| `[ifc]`        | ifcopenshell            | IFC read (with property sets)                             |
+| `[iges]`       | pyiges[full]            | IGES read (`pyiges` backend, default)                     |
+| `[openscad]`   | (uses `openscad` CLI)   | SCAD read                                                 |
+| `[full]`       | all of the above        | every supported format                                    |
 
 **Python support:** 3.10 – 3.14.
 
@@ -143,6 +143,64 @@ use in closed-source / proprietary products subject to the standard
 LGPL dynamic-link obligations. See [LICENSES.md](LICENSES.md) for the
 full dependency-by-dependency breakdown, the LGPL compliance notes, and the rationale for not depending on
 `gmsh`.
+
+## IGES backends
+
+`read_iges` has two readers behind it.
+
+| `backend=`           | Needs    | Trimmed surfaces               | IGES level metadata        |
+| -------------------- | -------- | ------------------------------ | -------------------------- |
+| `'pyiges'` (default) | `[iges]` | Ignored                        | `cad.level` / `cad.levels` |
+| `'ocp'`              | `[step]` | Clipped to the trimming curves | none                       |
+
+```python
+import pyvista_cad
+
+mesh = pyvista_cad.read_iges('scan.igs', backend='ocp', linear_deflection=0.1)
+mesh.cad.plot()
+```
+
+The default is unchanged, so `pv.read('part.igs')` still goes through
+pyiges. `pv.read` accepts no reader keywords, so selecting the OCCT
+backend means calling `read_iges` directly.
+
+### Speed
+
+pyiges parses and evaluates surfaces in Python; OCCT does both in C++.
+Best of three warm runs on `pyvista_cad.examples.downloads.iges_impeller_path()`
+(4.0 MB, 4615 entities, a SolidWorks export):
+
+| Reader | Setting                           | Cells   | Time   |
+| ------ | --------------------------------- | ------- | ------ |
+| pyiges | `delta=0.025` (default)           | 753,716 | 19.9 s |
+| ocp    | `linear_deflection=0.1` (default) | 20,195  | 0.5 s  |
+| ocp    | `linear_deflection=0.005`         | 122,335 | 0.8 s  |
+| ocp    | `linear_deflection=0.0005`        | 716,465 | 4.0 s  |
+
+The two defaults are not the same mesh density, so the 36x at defaults
+is partly a coarser mesh. Matched at roughly equal cell count the gap is
+about 5x, and it grows with file size because the Python-side cost
+scales with entity count. Numbers are from one machine; treat the ratios
+as the signal, not the absolute times.
+
+### Trimmed surfaces
+
+pyiges dispatches IGES type 128 (rational B-spline surface) and has no
+handler for type 144 (trimmed parametric surface), so it tessellates the
+full underlying surface and ignores the trimming curves. OCCT applies
+them. On the impeller above that shows up in the extent:
+
+| Reader | X bounds      |
+| ------ | ------------- |
+| pyiges | -50.5 to 49.5 |
+| ocp    | -42.7 to 42.5 |
+
+Files whose trimming curves follow the natural surface boundary read the
+same either way, which is why the small `tests/data/impeller.iges`
+fixture agrees between backends.
+
+Reach for `'ocp'` on anything from a scanner or a CMM. Use `'pyiges'`
+when you need the per-entity level numbers.
 
 ## Fidelity and limitations
 
