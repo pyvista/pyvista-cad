@@ -59,7 +59,7 @@ _SPATIAL_CLASSES = (
 def _require_ifc() -> Any:
     try:
         import ifcopenshell
-        import ifcopenshell.geom as geom
+        from ifcopenshell import geom
         import ifcopenshell.util.element as util_element
         import ifcopenshell.util.unit as util_unit
     except ImportError as exc:

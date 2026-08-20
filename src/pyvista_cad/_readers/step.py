@@ -240,7 +240,7 @@ def _build_assembly(
     try:
         surface = _as_surface(obj)
         shape = polydata_to_topods(surface)
-    except Exception:
+    except Exception:  # noqa: BLE001  # any unconvertible block is recorded, not fatal
         failed.append(name)
         return None
 
@@ -322,7 +322,7 @@ def _write_compound(
         try:
             surface = _as_surface(obj)
             shape = polydata_to_topods(surface)
-        except Exception:
+        except Exception:  # noqa: BLE001  # any unconvertible block is recorded, not fatal
             failed.append(name)
             return 0
         builder.Add(compound, shape)
