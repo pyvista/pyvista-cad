@@ -43,7 +43,24 @@ jobs:
       - name: Install with [docs]
         run: uv sync --extra docs
 
+      # The gallery executes every example, so it fetches the whole
+      # `pyvista_cad.examples.downloads` registry on a cold runner. That
+      # made the build hostage to the slowest upstream of the day: NIST
+      # has served the multi-MB STEP fixtures slowly enough to blow the
+      # HTTP read timeout and fail the job outright. Same cache strategy
+      # the `test` jobs in ci.yml already use: the sha256-pinned registry
+      # in downloads.py is a complete cache key.
+      - name: Cache example datasets
+        uses: actions/cache@v6
+        with:
+          path: ${{ github.workspace }}/.pooch-cache/pyvista_cad
+          key: pooch-${{ runner.os }}-${{ hashFiles('src/pyvista_cad/examples/downloads.py') }}
+          restore-keys: |
+            pooch-${{ runner.os }}-
+
       - name: Build documentation
+        env:
+          PYVISTA_CAD_USERDATA_PATH: ${{ github.workspace }}/.pooch-cache/pyvista_cad
         run: uv run make -C doc html
 
       - name: Prevent Jekyll processing on GH Pages
