@@ -134,6 +134,7 @@ def test_per_file_coverage_contract(tmp_path: Path) -> None:
         env=env,
         capture_output=True,
         text=True,
+        check=False,
     )
     assert run.returncode == 0, (
         'nested suite run under coverage failed; cannot evaluate the '
@@ -156,6 +157,7 @@ def test_per_file_coverage_contract(tmp_path: Path) -> None:
         env=env,
         capture_output=True,
         text=True,
+        check=False,
     )
     assert json_proc.returncode == 0, (
         f'`coverage json` failed.\n{json_proc.stdout}\n{json_proc.stderr}'

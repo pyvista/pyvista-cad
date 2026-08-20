@@ -44,18 +44,24 @@ import pooch
 # name -> (url, sha256)
 _FILES: dict[str, tuple[str, str]] = {
     'step_part.step': (
-        'https://data.nist.gov/od/ds/ark:/88434/mds2-2607/'
-        'CAD_Geometry/AMB2022-01-AMMT-PartCAD.STEP',
+        (
+            'https://data.nist.gov/od/ds/ark:/88434/mds2-2607/'
+            'CAD_Geometry/AMB2022-01-AMMT-PartCAD.STEP'
+        ),
         '623ee615d015bb231accdff3594592c3c7c563d98c463bd21680da2c0005d055',
     ),
     'step_recoater.step': (
-        'https://data.nist.gov/od/ds/ark:/88434/mds2-2607/'
-        'CAD_Geometry/AMB2022-01-AMMT-RecoaterGuideCAD.STEP',
+        (
+            'https://data.nist.gov/od/ds/ark:/88434/mds2-2607/'
+            'CAD_Geometry/AMB2022-01-AMMT-RecoaterGuideCAD.STEP'
+        ),
         'eae39537e677cac648df0f0660c65d8071df868f64bbe9b5605254c3fde362ab',
     ),
     'step_assembly.step': (
-        'https://data.nist.gov/od/ds/ark:/88434/mds2-2607/'
-        'CAD_Geometry/AMB2022-01-AMMT-PlateLayoutAssy.STEP',
+        (
+            'https://data.nist.gov/od/ds/ark:/88434/mds2-2607/'
+            'CAD_Geometry/AMB2022-01-AMMT-PlateLayoutAssy.STEP'
+        ),
         'a434876ff9a19ce27a340011d471f14014ccc12d648a8e99a3bdcc817b11e0be',
     ),
     'iges_impeller.igs': (
@@ -63,19 +69,25 @@ _FILES: dict[str, tuple[str, str]] = {
         'c9fa023feddc88dfc5a73da00d3cd2d9987b94b27237f28a7f91b09881203df5',
     ),
     'ifc_building.ifc': (
-        'https://raw.githubusercontent.com/buildingSMART/Sample-Test-Files/'
-        'main/IFC%204.0.2.1%20(IFC%204)/PCERT-Sample-Scene/'
-        'Building-Architecture.ifc',
+        (
+            'https://raw.githubusercontent.com/buildingSMART/Sample-Test-Files/'
+            'main/IFC%204.0.2.1%20(IFC%204)/PCERT-Sample-Scene/'
+            'Building-Architecture.ifc'
+        ),
         '3ff9b10bd00c7b96dded51e7ca5a6b69efbea38b049adcdd05fcd247de7e70d5',
     ),
     'three_mf_colored.3mf': (
-        'https://raw.githubusercontent.com/3MFConsortium/3mf-samples/'
-        'master/examples/material/dodeca_chain_loop_color.3mf',
+        (
+            'https://raw.githubusercontent.com/3MFConsortium/3mf-samples/'
+            'master/examples/material/dodeca_chain_loop_color.3mf'
+        ),
         'fe4bdcd667044547faf50ce29d0af7c6f2ea39c11caa8c4b26e841d888863cc0',
     ),
     'gltf_toycar.glb': (
-        'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/'
-        'main/Models/ToyCar/glTF-Binary/ToyCar.glb',
+        (
+            'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/'
+            'main/Models/ToyCar/glTF-Binary/ToyCar.glb'
+        ),
         '01a60862de55cd4b9f3acfab0b0def86451800f9c42467fcd61052c16cb9838c',
     ),
     'dxf_drawing.dxf': (
@@ -83,13 +95,17 @@ _FILES: dict[str, tuple[str, str]] = {
         '70c12f1e3fd291c4ab02df7628624956fce315263c0ebcb18734d0b6e5b9974a',
     ),
     'scad_threads.scad': (
-        'https://raw.githubusercontent.com/rcolyer/threads-scad/'
-        '5f25c7c52b3c59339960185b19f28ef2a1a1e693/threads.scad',
+        (
+            'https://raw.githubusercontent.com/rcolyer/threads-scad/'
+            '5f25c7c52b3c59339960185b19f28ef2a1a1e693/threads.scad'
+        ),
         'f8ee04e57a1c721b7d8d68764e55ea448af935242024e94768e7949e384b2bc7',
     ),
     'fcstd_nut.fcstd': (
-        'https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/master/'
-        'Mechanical%20Parts/Fasteners/Nuts/Metric/Nyloc-Nut_M3.fcstd',
+        (
+            'https://raw.githubusercontent.com/FreeCAD/FreeCAD-library/master/'
+            'Mechanical%20Parts/Fasteners/Nuts/Metric/Nyloc-Nut_M3.fcstd'
+        ),
         'd2fe41ac94515b51ed01f176773140795d4e447cf88b87099c369b32e4c11817',
     ),
     'tless_models.zip': (

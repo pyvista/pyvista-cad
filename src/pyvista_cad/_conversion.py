@@ -314,7 +314,7 @@ def polydata_to_topods(mesh: pv.PolyData) -> Any:
     # writers serialize a single body rather than a free-form shell.
     try:
         shell = TopoDS.Shell_s(sewed)
-    except Exception:
+    except Exception:  # noqa: BLE001  # OCCT raises assorted Standard_Failure subclasses
         shell = None
     if isinstance(shell, TopoDS_Shell) and shell.Closed():
         # pragma reason: OCCT BRepBuilderAPI_MakeSolid does not raise on
@@ -322,6 +322,6 @@ def polydata_to_topods(mesh: pv.PolyData) -> Any:
         # from a valid pv.PolyData without mocking OCCT.
         try:
             return BRepBuilderAPI_MakeSolid(shell).Solid()
-        except Exception:  # pragma: no cover
+        except Exception:  # noqa: BLE001  # pragma: no cover
             return sewed
     return sewed
