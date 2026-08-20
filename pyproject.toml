@@ -66,10 +66,13 @@ trimesh = ['pyvista-trimesh>=0.1']
 # contaminate any closed-source consumer). CAD-to-FEA tet meshing
 # remains a one-liner: drive gmsh directly, `gmsh.write('out.msh')`,
 # then `pv.read('out.msh')` (PyVista routes `.msh` through `meshio`).
-full = ['pyvista-cad[step,3mf,iges,ifc,cadquery,trimesh]']
+all = ['pyvista-cad[step,3mf,iges,ifc,cadquery,trimesh]']
+# Backward-compatible alias for the pre-rename name. Kept so
+# `pip install pyvista-cad[full]` keeps resolving; `all` is canonical.
+full = ['pyvista-cad[all]']
 
 docs = [
-  'pyvista-cad[full]',
+  'pyvista-cad[all]',
   'cadquery>=2.4',
   'pandas>=2.0',
   'sphinx>=8.0',
@@ -144,7 +147,7 @@ Repository = 'https://github.com/pyvista/pyvista-cad'
 [tool.uv]
 # build123d >= 0.11 depends on `cadquery-ocp-novtk` (the external-VTK OCP
 # build) while cadquery depends on the VTK-bundled `cadquery-ocp`.
-# Installing both into one env (the `full`/`docs` cells do) collides on
+# Installing both into one env (the `all`/`docs` cells do) collides on
 # the shared `OCP/` namespace: novtk's build omits `IVtkOCC` internals,
 # so `import cadquery` dies with `cannot import name 'IVtkOCC_Shape'`.
 # The always-false marker overrides build123d's edge to novtk out of the
@@ -180,7 +183,7 @@ omit = ['*/examples/_generate.py']
 # different code subset, so a single per-matrix threshold cannot apply
 # uniformly. The real coverage contract (100% on _conversion/_metadata/
 # _accessor/_errors, >=90% on the rest excluding _backends) is enforced
-# executably by tests/test_coverage_contract.py on the full-extras cell.
+# executably by tests/test_coverage_contract.py on the all-extras cell.
 fail_under = 0
 exclude_lines = [
   'pragma: no cover',
