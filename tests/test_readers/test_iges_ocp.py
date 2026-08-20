@@ -22,6 +22,21 @@ pytest.importorskip('OCP', exc_type=ImportError)
 _EXPECTED_BOUNDS = (-25.246551, 28.0, -28.0, 24.248711, 0.0, 20.0)
 
 
+# A structurally valid IGES with an empty Directory Entry section: Start,
+# Global, then terminate. Every line is padded to the 72-column body plus
+# the section letter and sequence number the format requires.
+_EMPTY_IGES = (
+    'Empty model.'.ljust(72)
+    + 'S      1\n'
+    + '1H,,1H;,4Hnone,4Hnone,4Hnone,4Hnone,32,38,6,308,15,4Hnone,1.,1,2HMM,1,0.'
+    + 'G      1\n'
+    + '08,13H000000.000000,1.E-07,0.,4Hnone,4Hnone,11,0,13H000000.000000;'.ljust(72)
+    + 'G      2\n'
+    + 'S     1G     2D     0P     0'.ljust(72)
+    + 'T      1\n'
+)
+
+
 def test_read_iges_ocp_geometry_and_metadata(impeller_iges_path: Path) -> None:
     """The OCCT backend returns a stamped ``PolyData`` on the pinned hull."""
     out = pyvista_cad.read_iges(impeller_iges_path, backend='ocp')
@@ -69,11 +84,29 @@ def test_read_iges_ocp_missing_file_raises(tmp_path: Path) -> None:
 
 
 def test_read_iges_ocp_garbage_raises(tmp_path: Path) -> None:
-    """A file with no IGES structure raises ``CadReadError``."""
+    """A file with no IGES structure raises ``CadReadError``.
+
+    This is the reader-status guard: OCCT reports ``IFSelect_RetError``
+    and never reaches the transfer step.
+    """
     bad = tmp_path / 'no_start.iges'
     bad.write_text('this is not an iges file\n' * 10)
-    with pytest.raises(CadReadError):
+    with pytest.raises(CadReadError, match='reader status'):
         pyvista_cad.read_iges(bad, backend='ocp')
+
+
+def test_read_iges_ocp_empty_model_raises(tmp_path: Path) -> None:
+    """A well-formed IGES carrying no geometry raises ``CadReadError``.
+
+    Distinct from the garbage case: OCCT parses this happily and returns
+    ``IFSelect_RetDone``, then transfers zero roots. Returning an empty
+    ``PolyData`` here would be indistinguishable from a successful read
+    of a part with no faces.
+    """
+    empty = tmp_path / 'empty_model.iges'
+    empty.write_text(_EMPTY_IGES)
+    with pytest.raises(CadReadError, match='transferred no geometry'):
+        pyvista_cad.read_iges(empty, backend='ocp')
 
 
 @pytest.mark.parametrize('missing', ['OCP.IGESControl', 'OCP.IFSelect'])

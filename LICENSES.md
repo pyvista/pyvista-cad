@@ -8,28 +8,28 @@ commercial / proprietary use.
 
 Fully permissive. No copyleft.
 
-| Package          | License      |
-| ---------------- | ------------ |
-| pyvista          | MIT          |
-| numpy            | BSD-3-Clause |
-| pooch            | BSD-3-Clause |
-| ezdxf            | MIT          |
-| vtk (transitive) | BSD-3-Clause |
+| Package           | License            |
+| ----------------- | ------------------ |
+| pyvista           | MIT                |
+| numpy             | BSD-3-Clause       |
+| pooch             | BSD-3-Clause       |
+| ezdxf             | MIT                |
+| vtk (transitive)  | BSD-3-Clause       |
 
 ## Optional extras
 
-| Extra          | Package         | License                   | Commercial-use note                                  |
-| -------------- | --------------- | ------------------------- | ---------------------------------------------------- |
-| `[step]`       | build123d       | Apache-2.0                | Safe.                                                |
-| `[step]`       | cadquery-ocp    | LGPL-2.1 + OCCT exception | Safe when dynamically linked (pip wheel).            |
-| `[step-light]` | cascadio        | LGPL-2.1 + OCCT exception | Same as cadquery-ocp.                                |
-| `[3mf]`        | lib3mf          | BSD-2-Clause              | Safe.                                                |
-| `[ifc]`        | ifcopenshell    | LGPL-3.0+                 | Safe when dynamically linked; ship license text.     |
-| `[iges]`       | pyiges          | MIT                       | Safe.                                                |
-| `[cadquery]`   | cadquery        | Apache-2.0                | Safe.                                                |
-| `[trimesh]`    | pyvista-trimesh | MIT                       | Safe.                                                |
-| (no extra)     | openscad (CLI)  | GPL-2.0                   | Subprocess only. No linking, GPL does not propagate. |
-| (no extra)     | FreeCAD (CLI)   | LGPL-2.0+                 | Subprocess only.                                     |
+| Extra          | Package          | License                              | Commercial-use note                              |
+| -------------- | ---------------- | ------------------------------------ | ------------------------------------------------ |
+| `[step]`       | build123d        | Apache-2.0                           | Safe.                                            |
+| `[step]`       | cadquery-ocp     | LGPL-2.1 + OCCT exception            | Safe when dynamically linked (pip wheel).        |
+| `[step-light]` | cascadio         | LGPL-2.1 + OCCT exception            | Same as cadquery-ocp.                            |
+| `[3mf]`        | lib3mf           | BSD-2-Clause                         | Safe.                                            |
+| `[ifc]`        | ifcopenshell     | LGPL-3.0+                            | Safe when dynamically linked; ship license text. |
+| `[iges]`       | pyiges           | MIT                                  | Safe.                                            |
+| `[cadquery]`   | cadquery         | Apache-2.0                           | Safe.                                            |
+| `[trimesh]`    | pyvista-trimesh  | MIT                                  | Safe.                                            |
+| (no extra)     | openscad (CLI)   | GPL-2.0                              | Subprocess only. No linking, GPL does not propagate. |
+| (no extra)     | FreeCAD (CLI)    | LGPL-2.0+                            | Subprocess only.                                 |
 
 ### LGPL obligations (cadquery-ocp / cascadio / ifcopenshell)
 

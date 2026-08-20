@@ -74,21 +74,20 @@ def read_iges(
         msg = f'OCCT failed to read IGES {fname}: reader status {status}'
         raise CadReadError(msg)
 
-    # TransferRoots returns the number of roots it managed to map; zero
-    # means the file parsed but carried no transferable geometry, which
-    # is a read failure from the caller's point of view rather than an
-    # empty-but-valid mesh.
+    # TransferRoots returns the number of roots it mapped to shapes.
+    # Zero means the file parsed but carried nothing this reader can
+    # turn into geometry: an empty model, or one holding only entities
+    # OCCT's IGES processor does not transfer (drafting, annotation,
+    # structure). Raising beats handing back an empty PolyData that
+    # looks like a successful read of a part with no faces. A file that
+    # transfers no roots also yields a null OneShape, so this covers
+    # the null case too.
     if reader.TransferRoots() == 0:
         msg = f'OCCT transferred no geometry from IGES {fname}'
         raise CadReadError(msg)
 
-    shape = reader.OneShape()
-    if shape.IsNull():
-        msg = f'OCCT produced a null shape for IGES {fname}'
-        raise CadReadError(msg)
-
     mesh = topods_to_polydata(
-        shape,
+        reader.OneShape(),
         linear_deflection=linear_deflection,
         angular_deflection=angular_deflection,
     )
