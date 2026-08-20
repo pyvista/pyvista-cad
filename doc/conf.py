@@ -1,7 +1,7 @@
 """Sphinx + Sphinx Gallery configuration for pyvista-cad."""
 
 import datetime
-from importlib.metadata import version as get_version
+from importlib.metadata import PackageNotFoundError, version as get_version
 import os
 from pathlib import Path
 
@@ -25,7 +25,7 @@ copyright = f'2026-{year}, The PyVista Developers'  # noqa: A001
 author = 'The PyVista Developers'
 try:
     release = get_version('pyvista-cad').removesuffix('+dirty')
-except Exception:
+except PackageNotFoundError:
     release = '0.0.0'
 version = release
 

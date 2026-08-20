@@ -34,6 +34,7 @@ from pyvista_cad import (
     CadMetadata,
     MetadataError,
     TessellationError,
+    _conversion,
     examples,
 )
 from pyvista_cad._accessor import (
@@ -42,7 +43,6 @@ from pyvista_cad._accessor import (
     _resolve_cell_array,
     _scale_points,
 )
-import pyvista_cad._conversion as _conversion
 
 pv.OFF_SCREEN = True
 

@@ -64,7 +64,7 @@ import pyvista_cad
 
 pl = pv.Plotter()
 pl.cad.add(mb, line_width=3.0)
-pl.cad.add(other, silhouette=True)   # outline-only, for drawings
+pl.cad.add(other, silhouette=True)  # outline-only, for drawings
 pl.show()
 ```
 
@@ -81,11 +81,11 @@ inspection, picking, or per-face styling:
 ```python
 cad = mb.cad.cad_view(linear_deflection=0.2)
 
-faces = cad['faces']   # per-face MultiBlock, each block carries
-                        # cad.face_id and analytic point Normals
-edges = cad['edges']   # polylines; cell arrays cad.edge_id and
-                        # cad.edge_kind (0=line, 1=circle, 2=ellipse,
-                        # 6=bspline, ...; see cad.edge_kind_legend)
+faces = cad['faces']  # per-face MultiBlock, each block carries
+# cad.face_id and analytic point Normals
+edges = cad['edges']  # polylines; cell arrays cad.edge_id and
+# cad.edge_kind (0=line, 1=circle, 2=ellipse,
+# 6=bspline, ...; see cad.edge_kind_legend)
 ```
 
 The free functions `pyvista_cad.topods_to_edges`,
