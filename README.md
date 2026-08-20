@@ -27,7 +27,9 @@
 | `[ifc]`        | ifcopenshell            | IFC read (with property sets)                             |
 | `[iges]`       | pyiges[full]            | IGES read (`pyiges` backend, default)                     |
 | `[openscad]`   | (uses `openscad` CLI)   | SCAD read                                                 |
-| `[full]`       | all of the above        | every supported format                                    |
+| `[all]`        | all of the above        | every supported format                                    |
+
+`[full]` is kept as an alias of `[all]`, so existing installs and pinned requirement files keep resolving.
 
 **Python support:** 3.10 – 3.14.
 
@@ -38,7 +40,7 @@ FEA meshing via gmsh is intentionally out of scope. `gmsh` is GPLv2+ and would v
 ```bash
 pip install pyvista-cad           # DXF and glTF only
 pip install pyvista-cad[step]     # add STEP, BREP, FCStd
-pip install pyvista-cad[full]     # everything
+pip install pyvista-cad[all]      # everything
 ```
 
 ## Quick start

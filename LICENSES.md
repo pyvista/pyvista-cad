@@ -59,7 +59,7 @@ and is not a `pyvista-cad` dependency.
 
 ## Verdict
 
-The default `pyvista-cad[full]` install is suitable for closed-source
+The default `pyvista-cad[all]` install is suitable for closed-source
 commercial use, subject to standard LGPL notice and dynamic-link
 obligations for the OpenCascade and IFC backends. No GPL code is
 pulled in by any `pyvista-cad` extra.

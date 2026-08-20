@@ -51,7 +51,11 @@ jobs:
           - { os: ubuntu-latest, python-version: "3.14", extras: "dev" }
           - { os: ubuntu-latest, python-version: "3.10", extras: "dev,step" }
           - { os: ubuntu-latest, python-version: "3.14", extras: "dev,step" }
-          # Coverage upload cell.
+          # Coverage upload cell. Deliberately installs the `full` alias
+          # rather than `all`: this job's name is pinned as a required
+          # status check in the repo ruleset, so renaming it would block
+          # every PR until the ruleset is updated to match. Exercising
+          # the alias also keeps the back-compat path covered in CI.
           - { os: ubuntu-latest, python-version: "3.14", extras: "dev,full,step-light", coverage: true }
           # macOS — minimal: lowest + highest Python only
           - { os: macos-14, python-version: "3.10", extras: "dev" }
@@ -127,7 +131,7 @@ jobs:
     # This job installs ONLY the core package (DXF-only via ezdxf) so a
     # leaked import would actually be detectable (modules aren't on the
     # path, ImportError would surface). The matrix-`test` job above runs
-    # with `[full]` and so cannot enforce this invariant.
+    # with the full extras set and so cannot enforce this invariant.
     name: Lazy-imports guardrail (minimal extras)
     runs-on: ubuntu-latest
     steps:
@@ -173,8 +177,8 @@ jobs:
             pyproject.toml
             uv.lock
       - uses: pyvista/setup-headless-display-action@v4
-      - name: Install [dev,full] for end-to-end perf cases
-        run: uv sync --extra dev --extra full
+      - name: Install [dev,all] for end-to-end perf cases
+        run: uv sync --extra dev --extra all
       - name: Run benchmarks
         # Absolute wall-clock budgets flake on shared runners; soft mode
         # records breaches without failing the job. bench.json is still

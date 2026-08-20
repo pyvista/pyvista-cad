@@ -26,10 +26,14 @@ _SRC = _REPO_ROOT / 'src' / 'pyvista_cad'
 _HINT_RE = re.compile(r'pyvista-cad\[([a-z0-9,_-]+)\]')
 
 
-def _declared_extras() -> set[str]:
+def _optional_dependencies() -> dict[str, list[str]]:
     with _PYPROJECT.open('rb') as fh:
         data = tomllib.load(fh)
-    return set(data['project'].get('optional-dependencies', {}))
+    return data['project'].get('optional-dependencies', {})
+
+
+def _declared_extras() -> set[str]:
+    return set(_optional_dependencies())
 
 
 def _referenced_extras() -> dict[str, list[str]]:
@@ -68,31 +72,42 @@ def test_core_extras_exist() -> None:
         )
 
 
-def test_full_aggregates_the_format_extras() -> None:
-    """``full`` must aggregate the optional-format extras.
+def test_all_aggregates_the_format_extras() -> None:
+    """``all`` must aggregate the optional-format extras.
 
-    ``full`` is the single-shot install target; if a per-format extra
-    is added without being folded into ``full``, users who installed
-    ``pyvista-cad[full]`` silently miss it.
+    ``all`` is the single-shot install target; if a per-format extra is
+    added without being folded into ``all``, users who installed
+    ``pyvista-cad[all]`` silently miss it.
     """
-    with _PYPROJECT.open('rb') as fh:
-        data = tomllib.load(fh)
-    extras = data['project']['optional-dependencies']
-    assert 'full' in extras, 'no `full` extra declared'
+    extras = _optional_dependencies()
+    assert 'all' in extras, 'no `all` extra declared'
 
-    full_spec = ' '.join(extras['full'])
-    match = _HINT_RE.search(full_spec)
-    assert match is not None, f'`full` does not reference pyvista-cad[...]: {full_spec}'
+    all_spec = ' '.join(extras['all'])
+    match = _HINT_RE.search(all_spec)
+    assert match is not None, f'`all` does not reference pyvista-cad[...]: {all_spec}'
     aggregated = set(match.group(1).split(','))
 
     for required in ('step', '3mf', 'iges', 'ifc', 'cadquery', 'trimesh'):
         assert required in aggregated, (
-            f'`full` does not aggregate {required!r}; aggregates {sorted(aggregated)}'
+            f'`all` does not aggregate {required!r}; aggregates {sorted(aggregated)}'
         )
 
     # `openscad` has no installable extra (it needs the `openscad`
     # command-line binary, not a pip package), so it must not appear in
-    # the `full` aggregate.
+    # the `all` aggregate.
     assert 'openscad' not in aggregated, (
-        '`full` must not aggregate `openscad`: it has no pip-installable extra'
+        '`all` must not aggregate `openscad`: it has no pip-installable extra'
+    )
+
+
+def test_full_is_a_thin_alias_of_all() -> None:
+    """``full`` must delegate to ``all``, not carry its own copy of the list.
+
+    Exact delegation is what lets the test above speak for both names.
+    A duplicated list would drift the moment a new format extra lands in
+    only one of the two.
+    """
+    extras = _optional_dependencies()
+    assert extras['full'] == ['pyvista-cad[all]'], (
+        f"`full` should be exactly ['pyvista-cad[all]']; got {extras['full']}"
     )
