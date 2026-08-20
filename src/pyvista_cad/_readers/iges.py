@@ -4,10 +4,10 @@ Two read backends are supported:
 
 - ``'pyiges'`` (default): pure-Python parse plus geomdl tessellation.
   Recovers the per-entity IGES *level*. Requires ``pyvista-cad[iges]``.
-- ``'ocp'``: OCCT's ``IGESControl_Reader``. Roughly an order of
-  magnitude faster, and it clips trimmed surfaces (IGES type 144) to
-  their trimming curves, which pyiges does not. No level metadata.
-  Requires ``pyvista-cad[step]``.
+- ``'ocp'``: OCCT's ``IGESControl_Reader``. Several times faster on
+  large files, and it clips trimmed surfaces (IGES type 144) to their
+  trimming curves, which pyiges does not. No level metadata. Requires
+  ``pyvista-cad[step]``.
 
 The default stays ``'pyiges'`` so existing reads are unchanged;
 ``'ocp'`` is opt-in.

@@ -5,12 +5,15 @@ OCCT's ``IGESControl_Reader`` parses the file in C++ and hands back a
 tessellates. Two consequences distinguish this path from the pyiges
 one:
 
-- It is roughly an order of magnitude faster on non-trivial files,
-  because neither the parse nor the surface evaluation runs in Python.
+- It is faster, because neither the parse nor the surface evaluation
+  runs in Python. On the 4 MB example impeller the gap is about 5x at
+  matched tessellation density and about 36x at the two backends'
+  respective defaults, which do not produce the same mesh density. See
+  the README for the measurements.
 - It honors IGES trimmed-surface entities (type 144): the tessellation
-  is clipped to the trimming curves, whereas pyiges tessellates the
-  full underlying type-128 surface and so can emit geometry outside the
-  part's real boundary.
+  is clipped to the trimming curves. pyiges dispatches type 128 and has
+  no type-144 handler, so it tessellates the full underlying surface
+  and can emit geometry outside the part's real boundary.
 
 Per-entity IGES *level* metadata is not recovered here; that stays a
 pyiges-backend feature (see ``_pyiges.py``).
