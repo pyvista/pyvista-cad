@@ -23,6 +23,7 @@ import build123d as b3d
 import numpy as np
 import pyvista as pv
 
+from pyvista_cad import examples
 from pyvista_cad._conversion import (
     get_cached_topods,
     polydata_to_topods,
@@ -30,7 +31,6 @@ from pyvista_cad._conversion import (
     unwrap_to_topods,
 )
 from pyvista_cad._errors import TessellationError
-import pyvista_cad.examples as examples
 
 # Hardcoded INVENTORY-021 gate parameters.
 _LINEAR_DEFLECTION = 0.1
