@@ -124,8 +124,17 @@ _POOCH = pooch.create(
 )
 
 
+# pooch's default HTTP read timeout is 30 s, which several of these
+# hosts exceed under load. data.nist.gov in particular has served the
+# multi-megabyte STEP fixtures at ~38 s, failing every retry and taking
+# the docs gallery build down with it. The retries above only help when
+# a request fails fast; they cannot rescue a budget that is simply too
+# short.
+_DOWNLOADER = pooch.HTTPDownloader(timeout=120)
+
+
 def _fetch(name: str) -> str:
-    return str(_POOCH.fetch(name))
+    return str(_POOCH.fetch(name, downloader=_DOWNLOADER))
 
 
 def step_part_path() -> str:
