@@ -76,7 +76,7 @@ jobs:
             pyproject.toml
             uv.lock
       - name: Set up headless display
-        uses: pyvista/setup-headless-display-action@v4
+        uses: pyvista/setup-headless-display-action@v5
       - name: Install system packages for OCCT backends
         if: runner.os == 'Linux'
         run: |
@@ -176,7 +176,7 @@ jobs:
           cache-dependency-glob: |
             pyproject.toml
             uv.lock
-      - uses: pyvista/setup-headless-display-action@v4
+      - uses: pyvista/setup-headless-display-action@v5
       - name: Install [dev,all] for end-to-end perf cases
         run: uv sync --extra dev --extra all
       - name: Run benchmarks
