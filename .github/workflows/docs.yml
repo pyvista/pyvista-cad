@@ -31,7 +31,7 @@ jobs:
           python-version: "3.13"
 
       - name: Set up headless display
-        uses: pyvista/setup-headless-display-action@v4
+        uses: pyvista/setup-headless-display-action@v5
 
       - name: Install system packages for OCCT-backed examples
         run: |
@@ -93,7 +93,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
-      - uses: pyvista/setup-headless-display-action@v4
+      - uses: pyvista/setup-headless-display-action@v5
       - name: Install system packages for OCCT-backed examples
         run: |
           sudo apt-get update
