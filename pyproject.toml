@@ -94,7 +94,7 @@ dev = [
   # uv.lock is intentionally not committed (library), so the linter and
   # type-checker are pinned exactly: their patch/minor releases change
   # diagnostics and would flake CI against a green local tree.
-  'mypy==2.3.1',
+  'mypy==2.4.1',
   'ruff==0.16.4',
   'pytest>=8.0',
   'pytest-benchmark>=4.0',
