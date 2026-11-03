@@ -47,7 +47,7 @@ dependencies = ['ezdxf>=1.3', 'numpy>=1.24', 'pooch>=1.8', 'pyvista>=0.48.4']
 
 [project.optional-dependencies]
 step = ['build123d>=0.7']
-step-light = ['cascadio>=0.0.17']
+step-light = ['cascadio>=0.1.1']
 # Canonical 3MF extra name is '3mf' (PEP 503 normalizes it; the
 # pytest marker is `three_mf`, the install hint in
 # _backends/_lib3mf.py uses `pyvista-cad[3mf]`).
@@ -94,7 +94,7 @@ dev = [
   # uv.lock is intentionally not committed (library), so the linter and
   # type-checker are pinned exactly: their patch/minor releases change
   # diagnostics and would flake CI against a green local tree.
-  'mypy==2.3.1',
+  'mypy==2.4.1',
   'ruff==0.17.3',
   'pytest>=8.0',
   'pytest-benchmark>=4.0',
