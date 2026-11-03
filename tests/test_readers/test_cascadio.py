@@ -7,6 +7,7 @@ path requires the optional ``cascadio`` dependency and skips without it.
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 import pyvista as pv
 
@@ -50,15 +51,31 @@ def test_read_step_cascadio_backend_e2e() -> None:
     assert combined.n_points > 0
     assert str(out.field_data['cad.backend'][0]) == 'cascadio'
     assert str(out.field_data['cad.source_format'][0]) == 'step'
-    b = combined.bounds
-    # The fixture is a cube centred on the origin. Assert that shape
-    # as an invariant rather than a literal extent: cascadio's output unit
-    # is version-dependent (newer cascadio emits metres, older
-    # millimetres), so a fixed ±5.0 is brittle. Centred + cubic +
-    # non-degenerate holds in any unit.
-    ext_x = b.x_max - b.x_min
-    ext_z = b.z_max - b.z_min
-    assert ext_x > 0
-    assert b.x_min == pytest.approx(-b.x_max, abs=ext_x * 1e-3)
-    assert b.z_min == pytest.approx(-b.z_max, abs=ext_z * 1e-3)
-    assert ext_x == pytest.approx(ext_z, rel=1e-3)
+    assert str(out.field_data['cad.units'][0]) == 'mm'
+    assert all(str(b.field_data['cad.units'][0]) == 'mm' for b in out)
+    np.testing.assert_allclose(combined.bounds, [-5, 5, -5, 5, -5, 5], atol=1e-6)
+
+
+@pytest.mark.parametrize(('prefix', 'units', 'half'), [('.CENTI.', 'cm', 5.0), ('$', 'm', 5.0)])
+def test_read_step_cascadio_returns_declared_unit(
+    tmp_path: Path, prefix: str, units: str, half: float
+) -> None:
+    """Coordinates come back in the file's declared length unit, not glTF metres."""
+    pytest.importorskip('cascadio')
+    text = Path(pyvista_cad.examples.step_cube).read_text()
+    path = tmp_path / f'cube_{units}.step'
+    path.write_text(text.replace('SI_UNIT(.MILLI.,.METRE.)', f'SI_UNIT({prefix},.METRE.)'))
+    out = pyvista_cad.read_step(path, backend='cascadio', merge=True)
+    assert str(out.field_data['cad.units'][0]) == units
+    np.testing.assert_allclose(out.bounds, [-half, half] * 3, atol=1e-6)
+
+
+def test_read_step_cascadio_matches_build123d() -> None:
+    """Both STEP backends place a multi-part assembly in the same coordinates."""
+    pytest.importorskip('cascadio')
+    pytest.importorskip('build123d')
+    path = Path(__file__).parents[1] / 'data' / 'assembly_two_parts.step'
+    light = pyvista_cad.read_step(path, backend='cascadio')
+    full = pyvista_cad.read_step(path, backend='build123d')
+    assert str(light.field_data['cad.units'][0]) == str(full.field_data['cad.units'][0])
+    np.testing.assert_allclose(light.bounds, full.bounds, atol=1e-6)

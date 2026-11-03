@@ -47,7 +47,7 @@ dependencies = ['ezdxf>=1.3', 'numpy>=1.24', 'pooch>=1.8', 'pyvista>=0.48.4']
 
 [project.optional-dependencies]
 step = ['build123d>=0.7']
-step-light = ['cascadio>=0.0.17']
+step-light = ['cascadio>=0.1.1']
 # Canonical 3MF extra name is '3mf' (PEP 503 normalizes it; the
 # pytest marker is `three_mf`, the install hint in
 # _backends/_lib3mf.py uses `pyvista-cad[3mf]`).
