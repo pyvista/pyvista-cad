@@ -328,9 +328,10 @@ def test_round_trip_hausdorff_within_deflection_step_cube() -> None:
 def _topods_vertex_count(shape: object) -> int:
     from OCP.TopAbs import TopAbs_VERTEX
     from OCP.TopExp import TopExp
-    from OCP.TopTools import TopTools_IndexedMapOfShape
 
-    m = TopTools_IndexedMapOfShape()
+    from pyvista_cad._ocp import ShapeIndexedMap
+
+    m = ShapeIndexedMap()
     TopExp.MapShapes_s(shape, TopAbs_VERTEX, m)
     return int(m.Extent())
 

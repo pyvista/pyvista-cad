@@ -55,9 +55,10 @@ from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt, gp_Trsf
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopLoc import TopLoc_Location
-from OCP.TopoDS import TopoDS, TopoDS_Builder, TopoDS_Compound, TopoDS_Edge
+from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Edge
 
 from pyvista_cad._bridges.topods import from_topods, to_topods
+from pyvista_cad._ocp import to_edge, to_face
 
 pv.OFF_SCREEN = True
 
@@ -80,7 +81,7 @@ def filleted_box():
     mk = BRepFilletAPI_MakeFillet(box)
     ex = TopExp_Explorer(box, TopAbs_EDGE)
     while ex.More():
-        mk.Add(2.0, TopoDS.Edge_s(ex.Current()))
+        mk.Add(2.0, to_edge(ex.Current()))
         ex.Next()
     return mk.Shape()
 
@@ -195,9 +196,9 @@ def test_filleted_box_tangent_suppression_runs(filleted_box):
 
 def _first_face_and_edge(shape):
     fx = TopExp_Explorer(shape, TopAbs_FACE)
-    face = TopoDS.Face_s(fx.Current())
+    face = to_face(fx.Current())
     ex = TopExp_Explorer(face, TopAbs_EDGE)
-    return face, TopoDS.Edge_s(ex.Current())
+    return face, to_edge(ex.Current())
 
 
 def test_face_unit_normal_planar_face_is_real_unit_vector():
@@ -220,9 +221,9 @@ def test_face_unit_normal_curved_face_is_real_unit_vector():
     seen = []
     fx = TopExp_Explorer(cyl, TopAbs_FACE)
     while fx.More():
-        face = TopoDS.Face_s(fx.Current())
+        face = to_face(fx.Current())
         ex = TopExp_Explorer(face, TopAbs_EDGE)
-        edge = TopoDS.Edge_s(ex.Current())
+        edge = to_edge(ex.Current())
         n = _face_unit_normal_at_edge(face, edge)
         if n is not None:
             seen.append(n)
@@ -241,10 +242,10 @@ def test_face_unit_normal_cone_apex_is_none_walls_are_real():
     results = []
     fx = TopExp_Explorer(cone, TopAbs_FACE)
     while fx.More():
-        face = TopoDS.Face_s(fx.Current())
+        face = to_face(fx.Current())
         ex = TopExp_Explorer(face, TopAbs_EDGE)
         while ex.More():
-            n = _face_unit_normal_at_edge(face, TopoDS.Edge_s(ex.Current()))
+            n = _face_unit_normal_at_edge(face, to_edge(ex.Current()))
             results.append(n)
             if n is not None:
                 assert np.isclose(np.linalg.norm(n), 1.0)
@@ -751,7 +752,7 @@ def _first_box_face_and_triangulation():
     box = BRepPrimAPI_MakeBox(10.0, 6.0, 4.0).Shape()
     _ensure_mesh(box, 0.3, 0.5)
     fx = TopExp_Explorer(box, TopAbs_FACE)
-    face = TopoDS.Face_s(fx.Current())
+    face = to_face(fx.Current())
     loc = TopLoc_Location()
     tri = BRep_Tool.Triangulation_s(face, loc)
     return face, tri, loc.Transformation()
