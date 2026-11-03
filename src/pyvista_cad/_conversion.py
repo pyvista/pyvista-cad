@@ -100,7 +100,8 @@ def topods_to_polydata(
     from OCP.TopAbs import TopAbs_FACE
     from OCP.TopExp import TopExp_Explorer
     from OCP.TopLoc import TopLoc_Location
-    from OCP.TopoDS import TopoDS
+
+    from pyvista_cad._ocp import to_face
 
     try:
         BRepMesh_IncrementalMesh(shape, linear_deflection, False, angular_deflection, True)
@@ -113,7 +114,7 @@ def topods_to_polydata(
 
     explorer = TopExp_Explorer(shape, TopAbs_FACE)
     while explorer.More():
-        face = TopoDS.Face_s(explorer.Current())
+        face = to_face(explorer.Current())
         location = TopLoc_Location()
         triangulation = BRep_Tool.Triangulation_s(face, location)
         if triangulation is None:
@@ -245,7 +246,9 @@ def polydata_to_topods(mesh: pv.PolyData) -> Any:
         BRepBuilderAPI_Sewing,
     )
     from OCP.gp import gp_Pnt
-    from OCP.TopoDS import TopoDS, TopoDS_Shell
+    from OCP.TopoDS import TopoDS_Shell
+
+    from pyvista_cad._ocp import to_shell
 
     tri = mesh.triangulate()
     if not isinstance(tri, pv.PolyData):
@@ -258,7 +261,7 @@ def polydata_to_topods(mesh: pv.PolyData) -> Any:
     # Up-front guard: a face-less / lines-only / empty mesh has no
     # triangle connectivity. Building no faces leaves the sewing empty,
     # ``sewing.SewedShape()`` returns a null shape, and the downstream
-    # ``TopoDS.Shell_s`` cast then dereferences null in C++ (process
+    # ``TopoDS.Shell`` cast then dereferences null in C++ (process
     # SIGSEGV, exit 139) which no Python ``except`` can catch. Reject it
     # here with a clear, catchable error.
     if faces.size == 0 or not np.any(faces[:, 0] == 3):
@@ -304,7 +307,7 @@ def polydata_to_topods(mesh: pv.PolyData) -> Any:
     # A degenerate input (e.g. a single NaN or collinear triangle) can
     # build zero valid faces and leave the sewing empty, so
     # ``SewedShape()`` returns a null shape. Guard before any
-    # ``TopoDS.Shell_s`` / ``Solid_s`` cast: casting a null shape
+    # ``TopoDS.Shell`` / ``Solid_s`` cast: casting a null shape
     # dereferences null in C++ (uncatchable SIGSEGV).
     if sewed.IsNull():
         msg = 'OCCT sewing produced a null shape (degenerate mesh geometry)'
@@ -313,7 +316,7 @@ def polydata_to_topods(mesh: pv.PolyData) -> Any:
     # If the sewed result is a closed shell, promote it to a solid so
     # writers serialize a single body rather than a free-form shell.
     try:
-        shell = TopoDS.Shell_s(sewed)
+        shell = to_shell(sewed)
     except Exception:  # noqa: BLE001  # OCCT raises assorted Standard_Failure subclasses
         shell = None
     if isinstance(shell, TopoDS_Shell) and shell.Closed():

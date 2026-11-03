@@ -217,14 +217,11 @@ def _tangent_internal_edges(shape: Any, tol_deg: float) -> Any:
     """
     from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
     from OCP.TopExp import TopExp
-    from OCP.TopoDS import TopoDS
-    from OCP.TopTools import (
-        TopTools_IndexedDataMapOfShapeListOfShape,
-        TopTools_MapOfShape,
-    )
 
-    skip = TopTools_MapOfShape()
-    amap = TopTools_IndexedDataMapOfShapeListOfShape()
+    from pyvista_cad._ocp import ShapeAncestorMap, ShapeMap, to_edge, to_face
+
+    skip = ShapeMap()
+    amap = ShapeAncestorMap()
     TopExp.MapShapesAndAncestors_s(shape, TopAbs_EDGE, TopAbs_FACE, amap)
     cos_tol = np.cos(np.deg2rad(tol_deg))
 
@@ -232,9 +229,9 @@ def _tangent_internal_edges(shape: Any, tol_deg: float) -> Any:
         faces = amap.FindFromIndex(i)
         if faces.Extent() != 2:
             continue
-        edge = TopoDS.Edge_s(amap.FindKey(i))
-        f1 = TopoDS.Face_s(faces.First())
-        f2 = TopoDS.Face_s(faces.Last())
+        edge = to_edge(amap.FindKey(i))
+        f1 = to_face(faces.First())
+        f2 = to_face(faces.Last())
         n1 = _face_unit_normal_at_edge(f1, edge)
         n2 = _face_unit_normal_at_edge(f2, edge)
         if n1 is None or n2 is None:
@@ -310,8 +307,8 @@ def topods_to_edges(
     from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
     from OCP.TopExp import TopExp_Explorer
     from OCP.TopLoc import TopLoc_Location
-    from OCP.TopoDS import TopoDS
-    from OCP.TopTools import TopTools_MapOfShape
+
+    from pyvista_cad._ocp import ShapeMap, to_edge, to_face
 
     shape = unwrap_to_topods(shape)
     _ensure_mesh(shape, linear_deflection, angular_deflection)
@@ -322,12 +319,12 @@ def topods_to_edges(
     lines: list[int] = []
     edge_ids: list[int] = []
     edge_kinds: list[int] = []
-    seen = TopTools_MapOfShape()
+    seen = ShapeMap()
     next_id = 0
 
     fexp = TopExp_Explorer(shape, TopAbs_FACE)
     while fexp.More():
-        face = TopoDS.Face_s(fexp.Current())
+        face = to_face(fexp.Current())
         loc = TopLoc_Location()
         tri = BRep_Tool.Triangulation_s(face, loc)
         if tri is None:
@@ -337,7 +334,7 @@ def topods_to_edges(
 
         eexp = TopExp_Explorer(face, TopAbs_EDGE)
         while eexp.More():
-            edge = TopoDS.Edge_s(eexp.Current())
+            edge = to_edge(eexp.Current())
             if not seen.Add(edge):  # already emitted via another face
                 eexp.Next()
                 continue
@@ -370,7 +367,7 @@ def topods_to_edges(
     abandoned_edges = 0
     eexp = TopExp_Explorer(shape, TopAbs_EDGE)
     while eexp.More():
-        edge = TopoDS.Edge_s(eexp.Current())
+        edge = to_edge(eexp.Current())
         if seen.Add(edge):
             pts = _sample_free_edge(edge, linear_deflection)
             if pts is None:
@@ -531,7 +528,8 @@ def topods_to_multiblock(
     from OCP.TopAbs import TopAbs_FACE
     from OCP.TopExp import TopExp_Explorer
     from OCP.TopLoc import TopLoc_Location
-    from OCP.TopoDS import TopoDS
+
+    from pyvista_cad._ocp import to_face
 
     shape = unwrap_to_topods(shape)
     _ensure_mesh(shape, linear_deflection, angular_deflection)
@@ -541,7 +539,7 @@ def topods_to_multiblock(
     face_id = 0
     faceted_faces = 0
     while fexp.More():
-        face = TopoDS.Face_s(fexp.Current())
+        face = to_face(fexp.Current())
         loc = TopLoc_Location()
         tri = BRep_Tool.Triangulation_s(face, loc)
         if tri is None:
