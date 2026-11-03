@@ -1,6 +1,6 @@
 """Sphinx + Sphinx Gallery configuration for pyvista-cad."""
 
-import datetime
+import datetime as dt
 from importlib.metadata import PackageNotFoundError, version as get_version
 import os
 from pathlib import Path
@@ -20,7 +20,7 @@ os.environ['PYVISTA_BUILDING_GALLERY'] = 'true'
 # above. This mirrors how the other pyvista-org doc builds are wired.
 
 project = 'pyvista-cad'
-year = datetime.datetime.now(datetime.UTC).year
+year = dt.datetime.now(dt.UTC).year
 copyright = f'2026-{year}, The PyVista Developers'  # noqa: A001
 author = 'The PyVista Developers'
 try:
