@@ -71,7 +71,7 @@ _FILES: dict[str, tuple[str, str]] = {
     'ifc_building.ifc': (
         (
             'https://raw.githubusercontent.com/buildingSMART/Sample-Test-Files/'
-            'main/IFC%204.0.2.1%20(IFC%204)/PCERT-Sample-Scene/'
+            '05585e04cecbc6b67d397284bbc54d9163027023/IFC%204.0.2.1%20(IFC%204)/PCERT-Sample-Scene/'
             'Building-Architecture.ifc'
         ),
         '3ff9b10bd00c7b96dded51e7ca5a6b69efbea38b049adcdd05fcd247de7e70d5',
