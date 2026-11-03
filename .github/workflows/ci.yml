@@ -7,6 +7,12 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege default for every job (fixes CodeQL
+# actions/missing-workflow-permissions). Jobs that need more grant it
+# locally, e.g. `publish` adds `id-token: write` for OIDC PyPI auth.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
