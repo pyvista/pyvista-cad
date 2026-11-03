@@ -159,7 +159,11 @@ override-dependencies = [
   'cadquery-ocp>=8 ; python_version >= "3.11" and python_version < "3.13"',
   'build123d>=0.7,<0.13 ; python_version < "3.11" or python_version >= "3.13"',
   'build123d>=0.13 ; python_version >= "3.11" and python_version < "3.13"',
-  'vtk>=9.4',
+  # vtk 9.7.2 (published 2026-11-03) uploaded only a single
+  # cp310-win_amd64 wheel — no sdist, no Linux/macOS wheels — so every
+  # CI cell except Windows/Py3.10 fails resolution. Exclude it until a
+  # fixed release lands; 9.7.1 is the last good version.
+  'vtk>=9.4,!=9.7.2',
   'cadquery-ocp-novtk ; python_version < "3.0"',
 ]
 # numpy 2.5 is not yet supported by the pinned VTK (its
