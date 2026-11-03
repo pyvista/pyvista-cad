@@ -13,7 +13,10 @@ from typing import Any
 import numpy as np
 import pyvista as pv
 
+from pyvista_cad._backends._build123d import _detect_step_units
 from pyvista_cad._errors import CadReadError, OptionalDependencyError
+
+_METRES_PER_UNIT = {'mm': 1e-3, 'cm': 1e-2, 'm': 1.0, 'inch': 0.0254, 'foot': 0.3048}
 
 
 def read_step(
@@ -57,17 +60,26 @@ def read_step(
             raise CadReadError(msg) from exc
         loaded: Any = pv.read(str(glb_path))
 
+    # cascadio writes glTF in metres; return the file's declared unit.
+    units = _detect_step_units(fname)
+    if units not in _METRES_PER_UNIT:
+        units = 'm'
+    to_file = 1.0 / _METRES_PER_UNIT[units]
+
     mb = _flatten_to_multiblock(loaded)
     mb.field_data['cad.source_format'] = np.array(['step'])
     mb.field_data['cad.reader'] = np.array(['pyvista_cad.read_step'])
     mb.field_data['cad.backend'] = np.array(['cascadio'])
+    mb.field_data['cad.units'] = np.array([units])
     for i in range(len(mb)):
         block = mb[i]
         if block is None:
             continue
+        block.points *= to_file
         block.field_data['cad.source_format'] = np.array(['step'])
         block.field_data['cad.reader'] = np.array(['pyvista_cad.read_step'])
         block.field_data['cad.backend'] = np.array(['cascadio'])
+        block.field_data['cad.units'] = np.array([units])
         name = mb.get_block_name(i)
         if name:
             block.field_data['cad.label'] = np.array([name])
@@ -77,6 +89,7 @@ def read_step(
         combined.field_data['cad.source_format'] = np.array(['step'])
         combined.field_data['cad.reader'] = np.array(['pyvista_cad.read_step'])
         combined.field_data['cad.backend'] = np.array(['cascadio'])
+        combined.field_data['cad.units'] = np.array([units])
         return combined
     return mb
 
