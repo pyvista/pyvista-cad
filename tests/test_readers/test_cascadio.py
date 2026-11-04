@@ -70,6 +70,26 @@ def test_read_step_cascadio_returns_declared_unit(
     np.testing.assert_allclose(out.bounds, [-half, half] * 3, atol=1e-6)
 
 
+def test_read_step_cascadio_tags_brep_faces() -> None:
+    """Each triangle carries its B-rep face, so a box reads as 6 faces with
+    12 edges and a pin as 3 faces with 2 circular edges and no seam."""
+    pytest.importorskip('cascadio')
+    path = Path(__file__).parents[1] / 'data' / 'assembly_two_parts.step'
+    base, pin = pyvista_cad.read_step(path, backend='cascadio')
+    for part, n_faces, n_edges in [(base, 6, 12), (pin, 3, 2)]:
+        assert part.cell_data['cad.face_id'].size == part.n_cells
+        assert np.unique(part.cell_data['cad.face_id']).size == n_faces
+        edges = pyvista_cad.face_id_edges(part)
+        assert np.unique(edges.cell_data['cad.edge_id']).size == n_edges
+
+
+def test_read_step_cascadio_merge_keeps_face_ids_distinct() -> None:
+    pytest.importorskip('cascadio')
+    path = Path(__file__).parents[1] / 'data' / 'assembly_two_parts.step'
+    merged = pyvista_cad.read_step(path, backend='cascadio', merge=True)
+    assert np.unique(merged.cell_data['cad.face_id']).size == 9
+
+
 def test_read_step_cascadio_matches_build123d() -> None:
     """Both STEP backends place a multi-part assembly in the same coordinates."""
     pytest.importorskip('cascadio')

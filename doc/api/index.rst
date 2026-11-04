@@ -76,6 +76,7 @@ or plot it directly.
    add_cad
    plot_cad
    as_cad_multiblock
+   face_id_edges
    flatten_to_cad_polydata
    get_cad_edges
    topods_to_edges

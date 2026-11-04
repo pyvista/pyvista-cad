@@ -92,6 +92,12 @@ The free functions `pyvista_cad.topods_to_edges`,
 `topods_to_multiblock`, `flatten_to_cad_polydata`, and
 `as_cad_multiblock` expose the same machinery for raw OCCT shapes.
 
+Without OCP, the `[step-light]` STEP reader tags every triangle with
+its B-rep face in a `cad.face_id` cell array, and
+`pyvista_cad.face_id_edges` recovers the topological edges from it.
+`cad_view()` and `.cad.plot()` use these edges for any mesh carrying
+`cad.face_id`.
+
 ## The dual `.cad` accessor
 
 `.cad` is registered on both `pv.DataSet` and `pv.MultiBlock`. On a
