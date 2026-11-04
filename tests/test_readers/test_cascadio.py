@@ -79,3 +79,28 @@ def test_read_step_cascadio_matches_build123d() -> None:
     full = pyvista_cad.read_step(path, backend='build123d')
     assert str(light.field_data['cad.units'][0]) == str(full.field_data['cad.units'][0])
     np.testing.assert_allclose(light.bounds, full.bounds, atol=1e-6)
+
+
+@pytest.mark.parametrize('backend', ['cascadio', 'build123d'])
+def test_read_step_default_tessellation_follows_model_size(tmp_path: Path, backend: str) -> None:
+    """The same shape declared in metres tessellates like its millimetre original."""
+    pytest.importorskip(backend)
+    source = Path(pyvista_cad.examples.bracket_step_path())
+    path = tmp_path / 'bracket_m.step'
+    path.write_text(source.read_text().replace('SI_UNIT(.MILLI.,', 'SI_UNIT($,'))
+    small = pyvista_cad.read_step(source, backend=backend, merge=True)
+    large = pyvista_cad.read_step(path, backend=backend, merge=True)
+    assert large.n_cells == small.n_cells
+    fixed = pyvista_cad.read_step(path, backend=backend, merge=True, linear_deflection=0.1)
+    assert fixed.n_cells > 2 * large.n_cells
+
+
+def test_read_step_cascadio_returns_active_normals() -> None:
+    """Each part carries the B-rep surface normals as the active ``Normals``."""
+    pytest.importorskip('cascadio')
+    out = pyvista_cad.read_step(pyvista_cad.examples.bracket_step_path(), backend='cascadio')
+    for block in out:
+        assert block.point_data.active_normals_name == 'Normals'
+        assert 'NORMAL' not in block.point_data
+        normals = np.asarray(block.point_data['Normals'])
+        np.testing.assert_allclose(np.linalg.norm(normals, axis=1), 1.0, atol=1e-5)

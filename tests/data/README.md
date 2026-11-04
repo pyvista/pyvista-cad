@@ -36,7 +36,7 @@ two named products, `Base` and `Pin`.
 | block | name   | `cad.label` | n_cells | bounds                                          |
 | ----- | ------ | ----------- | ------- | ----------------------------------------------- |
 | 0     | `Base` | `Base`      | 12      | `(0.0, 30.0, 0.0, 20.0, 0.0, 10.0)`             |
-| 1     | `Pin`  | `Pin`       | 100     | `(11.0, 19.0, 6.029165, 13.970835, 10.0, 35.0)` |
+| 1     | `Pin`  | `Pin`       | 500     | `(11.0, 19.0, 6.001243, 13.998757, 10.0, 35.0)` |
 
 `Base` is a 30x20x10 mm box (identity component transform). `Pin` is a
 radius-4 mm, height-25 mm cylinder added with a `(15, 10, 10)` component

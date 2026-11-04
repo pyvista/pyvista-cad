@@ -22,7 +22,7 @@ from pyvista_cad import _LAZY
 # combined cell count, expected ``cad.source_format``).
 _FIXTURES = [
     ("__import__('pyvista_cad').examples.step_cube", 'MultiBlock', 12, 'step'),
-    ("'tests/data/assembly_two_parts.step'", 'MultiBlock', 112, 'step'),
+    ("'tests/data/assembly_two_parts.step'", 'MultiBlock', 512, 'step'),
     ("'tests/data/external.brep'", 'PolyData', 12, 'brep'),
     ("'tests/data/impeller.iges'", 'PolyData', 12168, 'iges'),
     ("'tests/data/dxf_r12.dxf'", 'PolyData', 5, 'dxf'),

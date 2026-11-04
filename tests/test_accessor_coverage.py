@@ -60,7 +60,7 @@ _BREP_ATTR = _conversion._BREP_ATTR
 @pytest.fixture
 def assembly() -> pv.MultiBlock:
     """The two-part STEP assembly (Base box + Pin cylinder)."""
-    return pyvista_cad.read_step(_ASSEMBLY)
+    return pyvista_cad.read_step(_ASSEMBLY, linear_deflection=0.1, angular_deflection=0.5)
 
 
 @pytest.fixture

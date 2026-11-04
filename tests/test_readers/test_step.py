@@ -85,7 +85,7 @@ def test_read_step_assembly_two_parts(assembly_step_path: Path) -> None:
     so the Pin's ``(15, 10, 10)`` component transform is applied exactly
     once (the reader must not re-apply it). A radius-4 mm, height-25 mm
     cylinder placed at ``(15, 10, 10)`` spans X ``[11, 19]``, Y
-    ``[6.03, 13.97]``, Z ``[10, 35]``.
+    ``[6.00, 14.00]``, Z ``[10, 35]``.
     """
     mb = pyvista_cad.read_step(assembly_step_path)
     assert isinstance(mb, pv.MultiBlock)
@@ -115,11 +115,11 @@ def test_read_step_assembly_two_parts(assembly_step_path: Path) -> None:
     assert (bb.z_min, bb.z_max) == pytest.approx((0.0, 10.0), abs=1e-4)
 
     pin = mb['Pin']
-    assert pin.n_cells == 100
+    assert pin.n_cells == 500
     assert str(pin.field_data['cad.label'][0]) == 'Pin'
     pb = pin.bounds
     assert (pb.x_min, pb.x_max) == pytest.approx((11.0, 19.0), abs=1e-4)
-    assert (pb.y_min, pb.y_max) == pytest.approx((6.029165, 13.970835), abs=1e-4)
+    assert (pb.y_min, pb.y_max) == pytest.approx((6.001243, 13.998757), abs=1e-4)
     assert (pb.z_min, pb.z_max) == pytest.approx((10.0, 35.0), abs=1e-4)
 
 

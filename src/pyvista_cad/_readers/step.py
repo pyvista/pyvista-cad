@@ -16,6 +16,7 @@ The writer emits a faceted STEP. When given a
 source hierarchy and block names survive the round trip.
 """
 
+import math
 import os
 from typing import Any, Literal
 
@@ -24,6 +25,35 @@ import pyvista as pv
 
 from pyvista_cad._errors import CadWriteError, OptionalDependencyError
 from pyvista_cad._uri import require_local_path
+
+#: Default chordal tolerance as a fraction of the model's bounding-box diagonal.
+LINEAR_DEFLECTION_FRACTION = 5e-4
+
+_MM_PER_UNIT = {'mm': 1.0, 'cm': 10.0, 'm': 1000.0, 'inch': 25.4, 'foot': 304.8}
+
+
+def _diagonal_mm(impl: Any, backend_name: str, path: str | os.PathLike[str]) -> float:
+    """Bounding-box diagonal of a STEP model in millimetres, the unit OCCT meshes in."""
+    probe = impl(path, linear_deflection=1e9, angular_deflection=0.5, merge=False)
+    bounds = probe.bounds
+    diagonal = math.dist(bounds[0::2], bounds[1::2])
+    if backend_name == 'cascadio':
+        # cascadio returns the file's unit; build123d returns millimetres.
+        diagonal *= _MM_PER_UNIT.get(str(probe.field_data['cad.units'][0]), 1.0)
+    return diagonal
+
+
+def _activate_normals(mesh: pv.DataObject) -> None:
+    """Expose cascadio's glTF ``NORMAL`` attribute as the active ``Normals``."""
+    if isinstance(mesh, pv.MultiBlock):
+        for block in mesh:
+            if block is not None:
+                _activate_normals(block)
+        return
+    point_data = mesh.point_data
+    if 'NORMAL' in point_data and 'Normals' not in point_data:
+        point_data['Normals'] = point_data.pop('NORMAL')
+        point_data.active_normals_name = 'Normals'
 
 
 def _resolve_backend(
@@ -55,8 +85,8 @@ def read_step(
     path: str | os.PathLike[str],
     /,
     *,
-    linear_deflection: float = 0.1,
-    angular_deflection: float = 0.5,
+    linear_deflection: float | None = None,
+    angular_deflection: float = 0.1,
     merge: bool = False,
     backend: Literal['build123d', 'cascadio'] | None = None,
     **_: Any,
@@ -67,11 +97,14 @@ def read_step(
     ----------
     path : str or os.PathLike
         Path to a ``.step`` or ``.stp`` file.
-    linear_deflection : float, default: 0.1
+    linear_deflection : float, optional
         Maximum chordal deviation of the tessellation from the
-        underlying analytical surface (model units). The faceted mesh
+        underlying analytical surface, in millimetres. The faceted mesh
         deviates from the analytic B-rep surface by at most this value.
-    angular_deflection : float, default: 0.5
+        Defaults to :data:`LINEAR_DEFLECTION_FRACTION` of the model's
+        bounding-box diagonal, measured with a coarse first pass, so a
+        model tessellates the same way at any size.
+    angular_deflection : float, default: 0.1
         Maximum angular deviation in radians between adjacent
         triangles.
     merge : bool, default: False
@@ -100,7 +133,8 @@ def read_step(
         :class:`pyvista.PolyData`; only the root ``cad.source_format`` /
         ``cad.reader`` / ``cad.backend`` / ``cad.units`` survive, and
         per-part ``cad.color`` / ``cad.label`` / ``cad.transform`` is
-        dropped by the merge.
+        dropped by the merge. The ``cascadio`` backend also returns the
+        B-rep surface normals as the active ``Normals`` point array.
 
     Raises
     ------
@@ -137,12 +171,17 @@ def read_step(
         msg = f'unknown STEP backend {backend!r}'
         raise OptionalDependencyError(msg)
 
-    return _impl(
+    if linear_deflection is None:
+        diagonal = _diagonal_mm(_impl, backend_name, path)
+        linear_deflection = diagonal * LINEAR_DEFLECTION_FRACTION if diagonal > 0 else 0.1
+    mesh = _impl(
         path,
         linear_deflection=linear_deflection,
         angular_deflection=angular_deflection,
         merge=merge,
     )
+    _activate_normals(mesh)
+    return mesh
 
 
 def _block_transform(obj: Any) -> Any:
