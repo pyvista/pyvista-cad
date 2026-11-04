@@ -12,7 +12,7 @@ import pytest
 import pyvista as pv
 
 import pyvista_cad
-from pyvista_cad._backends._cascadio import _flatten_to_multiblock
+from pyvista_cad._backends._cascadio import _flatten_to_multiblock, _offset_face_ids
 
 
 def test_flatten_to_multiblock_flattens_nested_paths() -> None:
@@ -88,6 +88,16 @@ def test_read_step_cascadio_merge_keeps_face_ids_distinct() -> None:
     path = Path(__file__).parents[1] / 'data' / 'assembly_two_parts.step'
     merged = pyvista_cad.read_step(path, backend='cascadio', merge=True)
     assert np.unique(merged.cell_data['cad.face_id']).size == 9
+
+
+def test_offset_face_ids_leaves_shared_instance_arrays_alone() -> None:
+    """Two instances of one glTF mesh share a buffer; each gets its own range."""
+    part = pv.Cube().triangulate()
+    part.cell_data['cad.face_id'] = np.repeat(np.arange(6), 2)
+    mb = pv.MultiBlock([part, part.copy(deep=False)])
+    _offset_face_ids(mb)
+    assert mb[0].cell_data['cad.face_id'].tolist() == np.repeat(np.arange(6), 2).tolist()
+    assert mb[1].cell_data['cad.face_id'].min() == 6
 
 
 def test_read_step_cascadio_matches_build123d() -> None:

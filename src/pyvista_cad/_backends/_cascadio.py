@@ -93,11 +93,7 @@ def read_step(
             block.field_data['cad.label'] = np.array([name])
 
     if merge:
-        offset = 0
-        for block in mb:
-            if block is not None and 'cad.face_id' in block.cell_data:
-                block.cell_data['cad.face_id'] += offset
-                offset = int(block.cell_data['cad.face_id'].max()) + 1
+        _offset_face_ids(mb)
         combined = mb.combine(merge_points=True).extract_surface(algorithm='dataset_surface')
         combined.field_data['cad.source_format'] = np.array(['step'])
         combined.field_data['cad.reader'] = np.array(['pyvista_cad.read_step'])
@@ -155,6 +151,16 @@ def _tag_face_ids(obj: Any, face_ids: dict[int, list[np.ndarray | None]]) -> Non
             leaf, ids = block[j], prims[j]
             if isinstance(leaf, pv.PolyData) and ids is not None and len(ids) == leaf.n_cells:
                 leaf.cell_data['cad.face_id'] = ids
+
+
+def _offset_face_ids(mb: pv.MultiBlock) -> None:
+    """Renumber ``cad.face_id`` so ids stay distinct once the parts are merged."""
+    offset = 0
+    for block in mb:
+        if block is not None and 'cad.face_id' in block.cell_data:
+            # Instances of one glTF mesh share this array, so never add in place.
+            block.cell_data['cad.face_id'] = block.cell_data['cad.face_id'] + offset
+            offset = int(block.cell_data['cad.face_id'].max()) + 1
 
 
 def _flatten_to_multiblock(obj: Any) -> pv.MultiBlock:

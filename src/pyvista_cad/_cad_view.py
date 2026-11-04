@@ -797,19 +797,23 @@ def face_id_edges(mesh: pv.PolyData, *, tangent_tol_deg: float = 8.0) -> pv.Poly
     12
 
     """
+    if mesh.n_cells == 0:
+        return pv.PolyData()
     if not mesh.is_all_triangles:
         mesh = mesh.triangulate()
     tri = mesh.regular_faces
     face_id = np.asarray(mesh.cell_data['cad.face_id'], dtype=np.int64)
     pts = mesh.points
 
-    quantum = max(mesh.length, 1.0) * 1e-9
+    quantum = (mesh.length or 1.0) * 1e-9
     _, merged = np.unique(np.round(pts / quantum), axis=0, return_inverse=True)
     merged = merged.ravel()
 
     orig = tri[:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2)
     owner = np.repeat(np.arange(len(tri)), 3)
     ends = merged[orig]
+    proper = ends[:, 0] != ends[:, 1]
+    orig, owner, ends = orig[proper], owner[proper], ends[proper]
     flip = ends[:, 0] > ends[:, 1]
     ends[flip] = ends[flip][:, ::-1]
     orig[flip] = orig[flip][:, ::-1]
@@ -836,11 +840,11 @@ def face_id_edges(mesh: pv.PolyData, *, tangent_tol_deg: float = 8.0) -> pv.Poly
 
     if not keep.any():
         return pv.PolyData()
-    seg = orig[start[keep]]
+    used, seg = np.unique(orig[start[keep]], return_inverse=True)
     pair_id = np.column_stack([lo[keep], np.where(count[keep] == 1, -1, hi[keep])])
     _, edge_id = np.unique(pair_id, axis=0, return_inverse=True)
-    lines = np.column_stack([np.full(len(seg), 2), seg]).ravel()
-    edges = pv.PolyData(pts, lines=lines).clean(point_merging=False)
+    lines = np.column_stack([np.full(len(pair_id), 2), seg.reshape(-1, 2)]).ravel()
+    edges = pv.PolyData(pts[used], lines=lines)
     edges.cell_data['cad.edge_id'] = edge_id.ravel().astype(np.int64)
     return edges
 

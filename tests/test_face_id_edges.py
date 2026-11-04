@@ -56,6 +56,19 @@ def test_single_closed_face_has_no_edges() -> None:
     assert face_id_edges(sphere).n_cells == 0
 
 
+def test_degenerate_triangle_keeps_edge_ids_on_lines() -> None:
+    cube = pv.Cube().triangulate()
+    faces = np.vstack([cube.regular_faces, [0, 0, 1]])
+    mesh = pv.PolyData.from_regular_faces(cube.points, faces)
+    mesh.cell_data['cad.face_id'] = np.r_[np.repeat(np.arange(6), 2), 0]
+    edges = face_id_edges(mesh)
+    assert edges.n_cells == edges.n_lines == 12
+
+
+def test_empty_mesh_has_no_edges() -> None:
+    assert face_id_edges(pv.PolyData()).n_cells == 0
+
+
 def test_cad_view_uses_face_ids_over_feature_edges() -> None:
     cube = pv.Cube().triangulate()
     _, fallback = _resolve_cad(
