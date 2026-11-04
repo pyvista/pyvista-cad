@@ -53,7 +53,7 @@ step-light = ['cascadio>=0.1.1']
 # _backends/_lib3mf.py uses `pyvista-cad[3mf]`).
 '3mf' = ['lib3mf>=2.3']
 ifc = ['ifcopenshell>=0.7.0']
-iges = ['pyiges[full]>=0.3']
+iges = ['pyiges[full]>=0.4']
 cadquery = ['cadquery>=2.4']
 trimesh = ['pyvista-trimesh>=0.1']
 # OpenSCAD support shells out to the `openscad` command-line binary and
