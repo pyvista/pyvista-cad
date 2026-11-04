@@ -26,7 +26,7 @@ Fixtures
       added with a component transform translating it by
       ``(15, 10, 10)``; the reader applies that component transform
       exactly once and reports Pin bounds
-      ``(11.0, 19.0, 6.029165, 13.970835, 10.0, 35.0)`` and 100 cells
+      ``(11.0, 19.0, 6.001243, 13.998757, 10.0, 35.0)`` and 500 cells
       (these exact numbers are what the tessellated re-read produces;
       tests assert them directly).
 

@@ -62,7 +62,12 @@ jobs:
           # status check in the repo ruleset, so renaming it would block
           # every PR until the ruleset is updated to match. Exercising
           # the alias also keeps the back-compat path covered in CI.
-          - { os: ubuntu-latest, python-version: "3.14", extras: "dev,full,step-light", coverage: true }
+          - {
+              os: ubuntu-latest,
+              python-version: "3.14",
+              extras: "dev,full,step-light",
+              coverage: true,
+            }
           # macOS — minimal: lowest + highest Python only
           - { os: macos-14, python-version: "3.10", extras: "dev" }
           - { os: macos-14, python-version: "3.14", extras: "dev,step" }
