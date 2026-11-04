@@ -49,6 +49,7 @@ if TYPE_CHECKING:  # pragma: no cover - types only
     from pyvista_cad._cad_view import (
         add_cad,
         as_cad_multiblock,
+        face_id_edges,
         flatten_to_cad_polydata,
         get_cad_edges,
         plot_cad,
@@ -79,6 +80,7 @@ _LAZY: dict[str, tuple[str, str]] = {
     'to_topods': ('pyvista_cad._bridges.topods', 'to_topods'),
     'add_cad': ('pyvista_cad._cad_view', 'add_cad'),
     'as_cad_multiblock': ('pyvista_cad._cad_view', 'as_cad_multiblock'),
+    'face_id_edges': ('pyvista_cad._cad_view', 'face_id_edges'),
     'plot_cad': ('pyvista_cad._cad_view', 'plot_cad'),
     'topods_to_edges': ('pyvista_cad._cad_view', 'topods_to_edges'),
     'topods_to_multiblock': ('pyvista_cad._cad_view', 'topods_to_multiblock'),
@@ -216,6 +218,7 @@ __all__ = [
     'as_cad_multiblock',
     'enrich_gltf',
     'examples',
+    'face_id_edges',
     'flatten_to_cad_polydata',
     'from_build123d',
     'from_cadquery',

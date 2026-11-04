@@ -762,6 +762,93 @@ def _feature_edge_fallback(mesh: pv.PolyData, feature_angle: float) -> pv.PolyDa
     return feat
 
 
+def face_id_edges(mesh: pv.PolyData, *, tangent_tol_deg: float = 8.0) -> pv.PolyData:
+    """Topological edges of a tessellation tagged with ``cad.face_id``.
+
+    The B-rep edges are the triangle edges where the ``cad.face_id`` of
+    the two adjacent triangles differs, plus open boundaries, so no CAD
+    kernel is needed. Coincident points are merged first, so faces that
+    each carry a copy of a shared edge still meet and seams disappear.
+
+    Parameters
+    ----------
+    mesh : pyvista.PolyData
+        Triangulated surface with a ``cad.face_id`` cell array.
+    tangent_tol_deg : float, default: 8.0
+        Edges between two faces whose point normals agree to within
+        this angle are smooth transitions and are dropped, as in
+        :func:`topods_to_edges`. Needs active point normals on vertices
+        each face owns; otherwise the boundary is kept. ``0`` keeps all.
+
+    Returns
+    -------
+    pyvista.PolyData
+        One line cell per edge segment. ``cad.edge_id`` is shared by
+        every segment between the same pair of faces.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import pyvista as pv
+    >>> from pyvista_cad import face_id_edges
+    >>> cube = pv.Cube().triangulate()
+    >>> cube.cell_data['cad.face_id'] = np.repeat(np.arange(6), 2)
+    >>> face_id_edges(cube).n_cells
+    12
+
+    """
+    if mesh.n_cells == 0:
+        return pv.PolyData()
+    if not mesh.is_all_triangles:
+        mesh = mesh.triangulate()
+    tri = mesh.regular_faces
+    face_id = np.asarray(mesh.cell_data['cad.face_id'], dtype=np.int64)
+    pts = mesh.points
+
+    quantum = (mesh.length or 1.0) * 1e-9
+    _, merged = np.unique(np.round(pts / quantum), axis=0, return_inverse=True)
+    merged = merged.ravel()
+
+    orig = tri[:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2)
+    owner = np.repeat(np.arange(len(tri)), 3)
+    ends = merged[orig]
+    proper = ends[:, 0] != ends[:, 1]
+    orig, owner, ends = orig[proper], owner[proper], ends[proper]
+    flip = ends[:, 0] > ends[:, 1]
+    ends[flip] = ends[flip][:, ::-1]
+    orig[flip] = orig[flip][:, ::-1]
+
+    key = ends[:, 0] * (int(merged.max()) + 1) + ends[:, 1]
+    order = np.argsort(key, kind='stable')
+    key, orig, owner = key[order], orig[order], owner[order]
+    start = np.nonzero(np.r_[True, key[1:] != key[:-1]])[0]
+    count = np.diff(np.r_[start, len(key)])
+    faces = face_id[owner]
+    lo = np.minimum.reduceat(faces, start)
+    hi = np.maximum.reduceat(faces, start)
+    keep = (count == 1) | (lo != hi)
+
+    normals = mesh.point_data.active_normals
+    if normals is not None and tangent_tol_deg > 0:
+        pair = keep & (count == 2)
+        # A vertex shared by both faces has one averaged normal, which says nothing.
+        pair[pair] = (orig[start[pair]] != orig[start[pair] + 1]).all(axis=1)
+        side = np.asarray(normals)[orig].sum(axis=1)
+        side /= np.linalg.norm(side, axis=1, keepdims=True) + 1e-30
+        cos = np.einsum('ij,ij->i', side[start[pair]], side[start[pair] + 1])
+        keep[np.nonzero(pair)[0][cos > np.cos(np.radians(tangent_tol_deg))]] = False
+
+    if not keep.any():
+        return pv.PolyData()
+    used, seg = np.unique(orig[start[keep]], return_inverse=True)
+    pair_id = np.column_stack([lo[keep], np.where(count[keep] == 1, -1, hi[keep])])
+    _, edge_id = np.unique(pair_id, axis=0, return_inverse=True)
+    lines = np.column_stack([np.full(len(pair_id), 2), seg.reshape(-1, 2)]).ravel()
+    edges = pv.PolyData(pts[used], lines=lines)
+    edges.cell_data['cad.edge_id'] = edge_id.ravel().astype(np.int64)
+    return edges
+
+
 def _faces_have_analytic_normals(face_obj: Any) -> bool:
     """Return ``True`` if ``face_obj`` carries trustworthy analytic normals.
 
@@ -866,6 +953,8 @@ def _resolve_cad(
             if obj.n_cells and _count_faces(cached) > 0.5 * obj.n_cells:
                 return obj, _feature_edge_fallback(obj, feature_angle)
             return obj, edges
+        if 'cad.face_id' in obj.cell_data and obj.n_cells:
+            return obj, face_id_edges(obj)
         return obj, _feature_edge_fallback(obj, feature_angle)
 
     if isinstance(obj, pv.DataSet):

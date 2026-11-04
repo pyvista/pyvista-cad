@@ -5,8 +5,11 @@ its native glTF reader. We strip the data back out into a MultiBlock
 keyed on cascadio's mesh names.
 """
 
+import json
 import os
 import pathlib
+import re
+import struct
 import tempfile
 from typing import Any
 
@@ -17,6 +20,9 @@ from pyvista_cad._backends._build123d import _detect_step_units
 from pyvista_cad._errors import CadReadError, OptionalDependencyError
 
 _METRES_PER_UNIT = {'mm': 1e-3, 'cm': 1e-2, 'm': 1.0, 'inch': 0.0254, 'foot': 0.3048}
+
+_INDEX_DTYPES = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32}
+_MESH_BLOCK = re.compile(r'Mesh_(\d+)$')
 
 
 def read_step(
@@ -54,11 +60,13 @@ def read_step(
                 str(glb_path),
                 tol_linear=linear_deflection,
                 tol_angular=angular_deflection,
+                include_brep=True,
             )
         except Exception as exc:
             msg = f'cascadio failed to read STEP {fname}: {exc}'
             raise CadReadError(msg) from exc
         loaded: Any = pv.read(str(glb_path))
+        _tag_face_ids(loaded, _read_face_ids(glb_path))
 
     # cascadio writes glTF in metres; return the file's declared unit.
     units = _detect_step_units(fname)
@@ -85,6 +93,7 @@ def read_step(
             block.field_data['cad.label'] = np.array([name])
 
     if merge:
+        _offset_face_ids(mb)
         combined = mb.combine(merge_points=True).extract_surface(algorithm='dataset_surface')
         combined.field_data['cad.source_format'] = np.array(['step'])
         combined.field_data['cad.reader'] = np.array(['pyvista_cad.read_step'])
@@ -92,6 +101,66 @@ def read_step(
         combined.field_data['cad.units'] = np.array([units])
         return combined
     return mb
+
+
+def _read_face_ids(glb_path: pathlib.Path) -> dict[int, list[np.ndarray | None]]:
+    """Per-triangle B-rep face indices from cascadio's ``TM_brep_faces`` extension.
+
+    Keyed on glTF mesh index, one entry per primitive (``None`` where the
+    primitive carries no face indices). VTK's glTF loader ignores the
+    extension, so the accessors are read from the GLB directly.
+    """
+    data = glb_path.read_bytes()
+    (json_len,) = struct.unpack_from('<I', data, 12)
+    doc = json.loads(data[20 : 20 + json_len])
+    bin_start = 20 + json_len + 8
+
+    out: dict[int, list[np.ndarray | None]] = {}
+    for mesh_index, mesh in enumerate(doc.get('meshes', [])):
+        prims: list[np.ndarray | None] = []
+        for prim in mesh['primitives']:
+            ext = prim.get('extensions', {}).get('TM_brep_faces')
+            if ext is None:
+                prims.append(None)
+                continue
+            acc = doc['accessors'][ext['faceIndices']]
+            view = doc['bufferViews'][acc['bufferView']]
+            start = bin_start + view.get('byteOffset', 0) + acc.get('byteOffset', 0)
+            dtype = _INDEX_DTYPES[acc['componentType']]
+            prims.append(np.frombuffer(data, dtype, acc['count'], start).astype(np.int64))
+        out[mesh_index] = prims
+    return out
+
+
+def _tag_face_ids(obj: Any, face_ids: dict[int, list[np.ndarray | None]]) -> None:
+    """Attach ``cad.face_id`` to each primitive block of a glTF read.
+
+    VTK names a glTF mesh's group ``Mesh_<index>`` and orders its
+    children by primitive, one cell per triangle in index order.
+    """
+    if not isinstance(obj, pv.MultiBlock):
+        return
+    for i in range(len(obj)):
+        block = obj[i]
+        match = _MESH_BLOCK.search(obj.get_block_name(i) or '')
+        if match is None or not isinstance(block, pv.MultiBlock):
+            _tag_face_ids(block, face_ids)
+            continue
+        prims = face_ids.get(int(match.group(1)), [])
+        for j in range(min(len(block), len(prims))):
+            leaf, ids = block[j], prims[j]
+            if isinstance(leaf, pv.PolyData) and ids is not None and len(ids) == leaf.n_cells:
+                leaf.cell_data['cad.face_id'] = ids
+
+
+def _offset_face_ids(mb: pv.MultiBlock) -> None:
+    """Renumber ``cad.face_id`` so ids stay distinct once the parts are merged."""
+    offset = 0
+    for block in mb:
+        if block is not None and 'cad.face_id' in block.cell_data:
+            # Instances of one glTF mesh share this array, so never add in place.
+            block.cell_data['cad.face_id'] = block.cell_data['cad.face_id'] + offset
+            offset = int(block.cell_data['cad.face_id'].max()) + 1
 
 
 def _flatten_to_multiblock(obj: Any) -> pv.MultiBlock:

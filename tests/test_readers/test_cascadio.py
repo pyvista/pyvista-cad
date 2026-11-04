@@ -12,7 +12,7 @@ import pytest
 import pyvista as pv
 
 import pyvista_cad
-from pyvista_cad._backends._cascadio import _flatten_to_multiblock
+from pyvista_cad._backends._cascadio import _flatten_to_multiblock, _offset_face_ids
 
 
 def test_flatten_to_multiblock_flattens_nested_paths() -> None:
@@ -68,6 +68,36 @@ def test_read_step_cascadio_returns_declared_unit(
     out = pyvista_cad.read_step(path, backend='cascadio', merge=True)
     assert str(out.field_data['cad.units'][0]) == units
     np.testing.assert_allclose(out.bounds, [-half, half] * 3, atol=1e-6)
+
+
+def test_read_step_cascadio_tags_brep_faces() -> None:
+    """Each triangle carries its B-rep face, so a box reads as 6 faces with
+    12 edges and a pin as 3 faces with 2 circular edges and no seam."""
+    pytest.importorskip('cascadio')
+    path = Path(__file__).parents[1] / 'data' / 'assembly_two_parts.step'
+    base, pin = pyvista_cad.read_step(path, backend='cascadio')
+    for part, n_faces, n_edges in [(base, 6, 12), (pin, 3, 2)]:
+        assert part.cell_data['cad.face_id'].size == part.n_cells
+        assert np.unique(part.cell_data['cad.face_id']).size == n_faces
+        edges = pyvista_cad.face_id_edges(part)
+        assert np.unique(edges.cell_data['cad.edge_id']).size == n_edges
+
+
+def test_read_step_cascadio_merge_keeps_face_ids_distinct() -> None:
+    pytest.importorskip('cascadio')
+    path = Path(__file__).parents[1] / 'data' / 'assembly_two_parts.step'
+    merged = pyvista_cad.read_step(path, backend='cascadio', merge=True)
+    assert np.unique(merged.cell_data['cad.face_id']).size == 9
+
+
+def test_offset_face_ids_leaves_shared_instance_arrays_alone() -> None:
+    """Two instances of one glTF mesh share a buffer; each gets its own range."""
+    part = pv.Cube().triangulate()
+    part.cell_data['cad.face_id'] = np.repeat(np.arange(6), 2)
+    mb = pv.MultiBlock([part, part.copy(deep=False)])
+    _offset_face_ids(mb)
+    assert mb[0].cell_data['cad.face_id'].tolist() == np.repeat(np.arange(6), 2).tolist()
+    assert mb[1].cell_data['cad.face_id'].min() == 6
 
 
 def test_read_step_cascadio_matches_build123d() -> None:
