@@ -84,7 +84,7 @@ def test_read_step_cascadio_matches_build123d() -> None:
 @pytest.mark.parametrize('backend', ['cascadio', 'build123d'])
 def test_read_step_default_tessellation_follows_model_size(tmp_path: Path, backend: str) -> None:
     """The same shape declared in metres tessellates like its millimetre original."""
-    pytest.importorskip(backend)
+    pytest.importorskip(backend, exc_type=ImportError)
     source = Path(pyvista_cad.examples.bracket_step_path())
     path = tmp_path / 'bracket_m.step'
     path.write_text(source.read_text().replace('SI_UNIT(.MILLI.,', 'SI_UNIT($,'))
