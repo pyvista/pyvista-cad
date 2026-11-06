@@ -23,6 +23,7 @@ from pyvista_cad._errors import CadReadError, CadWarning, OptionalDependencyErro
 _METRES_PER_UNIT = {'mm': 1e-3, 'cm': 1e-2, 'm': 1.0, 'inch': 0.0254, 'foot': 0.3048}
 
 _INDEX_DTYPES = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32}
+_GLTF_TRIANGLES = 4
 _MESH_BLOCK = re.compile(r'Mesh_(\d+)$')
 
 
@@ -132,6 +133,11 @@ def _read_face_ids(glb_path: pathlib.Path) -> dict[int, list[np.ndarray | None]]
     return out
 
 
+def _is_triangles(primitive: dict[str, Any]) -> bool:
+    """Whether a glTF primitive draws triangles, the only kind with B-rep faces."""
+    return primitive.get('mode', _GLTF_TRIANGLES) == _GLTF_TRIANGLES
+
+
 def _face_accessors(doc: dict[str, Any]) -> list[list[int | None]]:
     """Accessor of each primitive's face indices, one list per glTF mesh.
 
@@ -146,18 +152,23 @@ def _face_accessors(doc: dict[str, Any]) -> list[list[int | None]]:
     ]
     present = [index for indices in written for index in indices if index is not None]
     # A writer that tags every later primitive needs no repair, so this function can then go.
-    if not present or all(index is not None for indices in written for index in indices[1:]):
+    shifted = any(
+        face is None and _is_triangles(prim)
+        for prims, faces in zip(meshes, written, strict=True)
+        for prim, face in zip(prims[1:], faces[1:], strict=True)
+    )
+    if not present or not shifted:
         return written
 
     accessors = doc['accessors']
-    keys = {prim.get('indices') for prims in meshes for prim in prims}
+    keys = {prim.get('indices') for prims in meshes for prim in prims if _is_triangles(prim)}
     if None not in keys:
-        first = min(present)
+        first = len(accessors) - len(keys)
         rank = {key: first + i for i, key in enumerate(sorted(keys))}
-        if len(accessors) - first == len(keys) and all(
+        if first <= min(present) and all(
             3 * accessors[face]['count'] == accessors[key]['count'] for key, face in rank.items()
         ):
-            return [[rank[prim['indices']] for prim in prims] for prims in meshes]
+            return [[rank.get(prim.get('indices')) for prim in prims] for prims in meshes]
 
     warnings.warn(
         'cascadio B-rep face indices could not be paired with their primitives; '

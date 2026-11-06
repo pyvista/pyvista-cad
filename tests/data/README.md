@@ -16,7 +16,7 @@ fields are normalised in-place). It also re-reads every fixture through
 the matching `pyvista_cad` reader and prints the numbers below; if you
 change a fixture, rerun and update this table from the printed output.
 
-All fixtures are small (largest is ~39 KB) and committed alongside the
+All fixtures are small (largest is ~41 KB) and committed alongside the
 generator.
 
 ## Fixtures
@@ -49,6 +49,12 @@ A STEP assembly written like `assembly_two_parts.step`. The first product,
 `Housing`, has one red face, so a cascadio read splits it into two glTF
 primitives. It is placed twice, followed by `Plate` and `Pin`, so a read has
 six leaves with 1, 5, 1, 5, 6 and 3 B-rep faces.
+
+### `assembly_free_edge.step` (41009 bytes)
+
+`assembly_face_colors.step` with a `Guide` product between the `Housing`
+instances and `Plate`: a straight 20 mm edge with no faces, which a cascadio
+read tessellates as a line primitive.
 
 ### `dxf_r12.dxf` (5758 bytes) and `dxf_r2018.dxf` (16585 bytes)
 

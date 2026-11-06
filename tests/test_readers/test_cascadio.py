@@ -152,10 +152,12 @@ def _glb(
     primitives: list[list[tuple[int | None, int | None]]],
     triangles: list[int],
     face_arrays: list[list[int]],
+    lines: tuple[int, ...] = (),
 ) -> Path:
     """Write a GLB of ``(indices, faceIndices)`` accessor pairs, one list per mesh.
 
     The accessors are one index accessor per ``triangles`` entry, then ``face_arrays``.
+    A primitive whose index accessor is in ``lines`` has the glTF ``LINES`` mode.
     """
     accessors: list[dict] = [{'count': 3 * count} for count in triangles]
     views: list[dict] = []
@@ -169,6 +171,8 @@ def _glb(
         prims: list[dict] = []
         for indices, faces in mesh:
             prims.append({} if indices is None else {'indices': indices})
+            if indices in lines:
+                prims[-1]['mode'] = 1
             if faces is not None:
                 prims[-1]['extensions'] = {'TM_brep_faces': {'faceIndices': faces}}
         meshes.append({'primitives': prims})
@@ -223,7 +227,7 @@ def test_read_face_ids_without_the_extension(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     'face_arrays',
-    [[[1], [2, 3, 4]], [[1], [2, 3], [4]]],
+    [[[1], [2, 3, 4]], [[9], [1], [2, 3]]],
     ids=['array-of-the-wrong-length', 'more-arrays-than-primitives'],
 )
 def test_read_face_ids_refuses_a_layout_it_cannot_pair(
@@ -234,6 +238,32 @@ def test_read_face_ids_refuses_a_layout_it_cannot_pair(
     with pytest.warns(CadWarning, match='B-rep face'):
         face_ids = _read_face_ids(glb)
     assert _as_lists(face_ids) == [[None, None]]
+
+
+def test_read_face_ids_skips_a_line_primitive_when_repairing(tmp_path: Path) -> None:
+    """A line primitive has no face array, so it takes no rank among the triangles."""
+    primitives = [[(0, None)], [(1, 4), (2, None)], [(3, 5)]]
+    glb = _glb(tmp_path / 'm.glb', primitives, [1, 1, 2, 1], [[6], [7, 8], [9]], lines=(0,))
+    assert _as_lists(_read_face_ids(glb)) == [[None], [[6], [7, 8]], [[9]]]
+
+
+def test_read_face_ids_ignores_an_untagged_later_line_primitive(tmp_path: Path) -> None:
+    """A later line primitive carries no faces, so its missing extension is no sign of a shift."""
+    glb = _glb(
+        tmp_path / 'm.glb', [[(0, 4), (1, None)], [(2, 3)]], [1, 1, 1], [[5], [6]], lines=(1,)
+    )
+    assert _as_lists(_read_face_ids(glb)) == [[[6], None], [[5]]]
+
+
+def test_read_step_cascadio_tags_every_face_beside_a_free_edge() -> None:
+    """A free edge in a multi-color assembly leaves every triangle leaf with its own faces."""
+    pytest.importorskip('cascadio')
+    path = FACE_COLORS_STEP.with_name('assembly_free_edge.step')
+    leaves = list(pyvista_cad.read_step(path, backend='cascadio'))
+    faces = [leaf for leaf in leaves if leaf.n_lines == 0]
+    assert len(leaves) == len(faces) + 1
+    counts = [np.unique(leaf.cell_data['cad.face_id']).size for leaf in faces]
+    assert counts == FACE_COLORS_LEAF_FACES
 
 
 def test_read_face_ids_refuses_a_primitive_without_indices(tmp_path: Path) -> None:

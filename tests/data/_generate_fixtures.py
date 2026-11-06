@@ -48,6 +48,11 @@ Fixtures
 
     Every leaf of the read has a known B-rep face count. Units: mm.
 
+``assembly_free_edge.step``
+    ``assembly_face_colors.step`` with a ``Guide`` product between the
+    ``Housing`` instances and ``Plate``: a straight edge 20 mm long and
+    no faces, which a cascadio read tessellates as a line primitive.
+
 ``dxf_r12.dxf`` / ``dxf_r2018.dxf``
     ezdxf documents in the R12 and R2018 DXF versions. Each carries, on
     named layers:
@@ -219,10 +224,11 @@ def generate_step_assembly() -> str:
     return path
 
 
-def generate_step_face_colors() -> str:
+def generate_step_face_colors(*, free_edge: bool = False) -> str:
     """Write a STEP assembly whose first product has a per-face color."""
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge
     from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox, BRepPrimAPI_MakeCylinder
-    from OCP.gp import gp_Trsf, gp_Vec
+    from OCP.gp import gp_Pnt, gp_Trsf, gp_Vec
     from OCP.IFSelect import IFSelect_RetDone
     from OCP.Interface import Interface_Static
     from OCP.Quantity import Quantity_Color, Quantity_TOC_RGB
@@ -237,7 +243,8 @@ def generate_step_face_colors() -> str:
     from OCP.XCAFApp import XCAFApp_Application
     from OCP.XCAFDoc import XCAFDoc_ColorSurf, XCAFDoc_DocumentTool
 
-    path = os.path.join(HERE, 'assembly_face_colors.step')
+    name = 'assembly_free_edge.step' if free_edge else 'assembly_face_colors.step'
+    path = os.path.join(HERE, name)
 
     app = XCAFApp_Application.GetApplication_s()
     doc = TDocStd_Document(TCollection_ExtendedString('XmlXCAF'))
@@ -259,12 +266,18 @@ def generate_step_face_colors() -> str:
 
     root_lbl = shape_tool.NewShape()
     TDataStd_Name.Set_s(root_lbl, TCollection_ExtendedString('Assembly'))
-    for label, offset in (
+    components = [
         (housing_lbl, (0.0, 0.0, 0.0)),
         (housing_lbl, (0.0, 40.0, 0.0)),
         (plate_lbl, (50.0, 0.0, 0.0)),
         (pin_lbl, (80.0, 0.0, 0.0)),
-    ):
+    ]
+    if free_edge:
+        edge = BRepBuilderAPI_MakeEdge(gp_Pnt(0, 0, 0), gp_Pnt(0, 0, 20)).Edge()
+        guide_lbl = shape_tool.AddShape(edge, False, True)
+        TDataStd_Name.Set_s(guide_lbl, TCollection_ExtendedString('Guide'))
+        components.insert(2, (guide_lbl, (-10.0, 0.0, 0.0)))
+    for label, offset in components:
         trsf = gp_Trsf()
         trsf.SetTranslation(gp_Vec(*offset))
         shape_tool.AddComponent(root_lbl, label, TopLoc_Location(trsf))
@@ -883,15 +896,17 @@ def _record(label: str, path: str) -> None:
 if __name__ == '__main__':
     step = generate_step_assembly()
     step_colors = generate_step_face_colors()
+    step_free_edge = generate_step_face_colors(free_edge=True)
     r12, r2018 = generate_dxf()
     mf = generate_multimaterial_3mf()
     ifc = generate_building_ifc()
     iges = generate_impeller_iges()
     brep = generate_external_brep()
 
-    print('Generated 7 fixtures into', HERE)
+    print('Generated 8 fixtures into', HERE)
     _record('STEP assembly', step)
     _record('STEP face colors', step_colors)
+    _record('STEP free edge', step_free_edge)
     _record('DXF R12', r12)
     _record('DXF R2018', r2018)
     _record('3MF multimaterial', mf)
