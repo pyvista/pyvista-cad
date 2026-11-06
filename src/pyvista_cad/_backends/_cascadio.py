@@ -165,7 +165,7 @@ def _face_accessors(doc: dict[str, Any]) -> list[list[int | None]]:
     if None not in keys:
         first = len(accessors) - len(keys)
         rank = {key: first + i for i, key in enumerate(sorted(keys))}
-        if first <= min(present) and all(
+        if max(keys) < first <= min(present) and all(
             3 * accessors[face]['count'] == accessors[key]['count'] for key, face in rank.items()
         ):
             return [[rank.get(prim.get('indices')) for prim in prims] for prims in meshes]

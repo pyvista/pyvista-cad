@@ -266,6 +266,14 @@ def test_read_step_cascadio_tags_every_face_beside_a_free_edge() -> None:
     assert counts == FACE_COLORS_LEAF_FACES
 
 
+def test_read_face_ids_refuses_an_index_accessor_as_a_face_array(tmp_path: Path) -> None:
+    """Counts can line up by chance, so the arrays must sit after every index accessor."""
+    glb = _glb(tmp_path / 'm.glb', [[(0, 2), (1, None)]], [3, 1], [[7]])
+    with pytest.warns(CadWarning, match='B-rep face'):
+        face_ids = _read_face_ids(glb)
+    assert _as_lists(face_ids) == [[None, None]]
+
+
 def test_read_face_ids_refuses_a_primitive_without_indices(tmp_path: Path) -> None:
     """Rank needs an index accessor on every primitive; without one nothing is paired."""
     glb = _glb(tmp_path / 'm.glb', [[(0, 1), (None, None)]], [1], [[1]])
