@@ -12,16 +12,18 @@ import re
 import struct
 import tempfile
 from typing import Any
+import warnings
 
 import numpy as np
 import pyvista as pv
 
 from pyvista_cad._backends._build123d import _detect_step_units
-from pyvista_cad._errors import CadReadError, OptionalDependencyError
+from pyvista_cad._errors import CadReadError, CadWarning, OptionalDependencyError
 
 _METRES_PER_UNIT = {'mm': 1e-3, 'cm': 1e-2, 'm': 1.0, 'inch': 0.0254, 'foot': 0.3048}
 
 _INDEX_DTYPES = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32}
+_GLTF_TRIANGLES = 4
 _MESH_BLOCK = re.compile(r'Mesh_(\d+)$')
 
 
@@ -116,20 +118,65 @@ def _read_face_ids(glb_path: pathlib.Path) -> dict[int, list[np.ndarray | None]]
     bin_start = 20 + json_len + 8
 
     out: dict[int, list[np.ndarray | None]] = {}
-    for mesh_index, mesh in enumerate(doc.get('meshes', [])):
+    for mesh_index, accessors in enumerate(_face_accessors(doc)):
         prims: list[np.ndarray | None] = []
-        for prim in mesh['primitives']:
-            ext = prim.get('extensions', {}).get('TM_brep_faces')
-            if ext is None:
+        for accessor in accessors:
+            if accessor is None:
                 prims.append(None)
                 continue
-            acc = doc['accessors'][ext['faceIndices']]
+            acc = doc['accessors'][accessor]
             view = doc['bufferViews'][acc['bufferView']]
             start = bin_start + view.get('byteOffset', 0) + acc.get('byteOffset', 0)
             dtype = _INDEX_DTYPES[acc['componentType']]
             prims.append(np.frombuffer(data, dtype, acc['count'], start).astype(np.int64))
         out[mesh_index] = prims
     return out
+
+
+def _is_triangles(primitive: dict[str, Any]) -> bool:
+    """Whether a glTF primitive draws triangles, the only kind with B-rep faces."""
+    return primitive.get('mode', _GLTF_TRIANGLES) == _GLTF_TRIANGLES
+
+
+def _face_accessors(doc: dict[str, Any]) -> list[list[int | None]]:
+    """Accessor of each primitive's face indices, one list per glTF mesh.
+
+    cascadio 0.1.1 ranks only each mesh's first primitive, so a mesh with
+    several primitives hands every following mesh a neighbor's array. Such a
+    file is paired by ``indices`` accessor rank, checked against triangle counts.
+    """
+    meshes = [mesh['primitives'] for mesh in doc.get('meshes', [])]
+    written: list[list[int | None]] = [
+        [prim.get('extensions', {}).get('TM_brep_faces', {}).get('faceIndices') for prim in prims]
+        for prims in meshes
+    ]
+    present = [index for indices in written for index in indices if index is not None]
+    # A writer that tags every later primitive needs no repair, so this function can then go.
+    shifted = any(
+        face is None and _is_triangles(prim)
+        for prims, faces in zip(meshes, written, strict=True)
+        for prim, face in zip(prims[1:], faces[1:], strict=True)
+    )
+    if not present or not shifted:
+        return written
+
+    accessors = doc['accessors']
+    keys = {prim.get('indices') for prims in meshes for prim in prims if _is_triangles(prim)}
+    if None not in keys:
+        first = len(accessors) - len(keys)
+        rank = {key: first + i for i, key in enumerate(sorted(keys))}
+        if max(keys) < first <= min(present) and all(
+            3 * accessors[face]['count'] == accessors[key]['count'] for key, face in rank.items()
+        ):
+            return [[rank.get(prim.get('indices')) for prim in prims] for prims in meshes]
+
+    warnings.warn(
+        'cascadio B-rep face indices could not be paired with their primitives; '
+        'reading without cad.face_id.',
+        CadWarning,
+        stacklevel=2,
+    )
+    return [[None] * len(prims) for prims in meshes]
 
 
 def _tag_face_ids(obj: Any, face_ids: dict[int, list[np.ndarray | None]]) -> None:
