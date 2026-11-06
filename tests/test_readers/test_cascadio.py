@@ -5,14 +5,25 @@
 path requires the optional ``cascadio`` dependency and skips without it.
 """
 
+import json
 from pathlib import Path
+import struct
 
 import numpy as np
 import pytest
 import pyvista as pv
 
 import pyvista_cad
-from pyvista_cad._backends._cascadio import _flatten_to_multiblock, _offset_face_ids
+from pyvista_cad._backends._cascadio import (
+    _flatten_to_multiblock,
+    _offset_face_ids,
+    _read_face_ids,
+)
+from pyvista_cad._errors import CadWarning
+
+FACE_COLORS_STEP = Path(__file__).parents[1] / 'data' / 'assembly_face_colors.step'
+#: B-rep faces per leaf: two Housing instances (colored face, the other five), Plate, Pin.
+FACE_COLORS_LEAF_FACES = [1, 5, 1, 5, 6, 3]
 
 
 def test_flatten_to_multiblock_flattens_nested_paths() -> None:
@@ -134,3 +145,175 @@ def test_read_step_cascadio_returns_active_normals() -> None:
         assert 'NORMAL' not in block.point_data
         normals = np.asarray(block.point_data['Normals'])
         np.testing.assert_allclose(np.linalg.norm(normals, axis=1), 1.0, atol=1e-5)
+
+
+def _glb(
+    path: Path,
+    primitives: list[list[tuple[int | None, int | None]]],
+    triangles: list[int],
+    face_arrays: list[list[int]],
+    lines: tuple[int, ...] = (),
+) -> Path:
+    """Write a GLB of ``(indices, faceIndices)`` accessor pairs, one list per mesh.
+
+    The accessors are one index accessor per ``triangles`` entry, then ``face_arrays``.
+    A primitive whose index accessor is in ``lines`` has the glTF ``LINES`` mode.
+    """
+    accessors: list[dict] = [{'count': 3 * count} for count in triangles]
+    views: list[dict] = []
+    body = b''
+    for array in face_arrays:
+        accessors.append({'bufferView': len(views), 'componentType': 5125, 'count': len(array)})
+        views.append({'byteOffset': len(body)})
+        body += np.asarray(array, dtype=np.uint32).tobytes()
+    meshes = []
+    for mesh in primitives:
+        prims: list[dict] = []
+        for indices, faces in mesh:
+            prims.append({} if indices is None else {'indices': indices})
+            if indices in lines:
+                prims[-1]['mode'] = 1
+            if faces is not None:
+                prims[-1]['extensions'] = {'TM_brep_faces': {'faceIndices': faces}}
+        meshes.append({'primitives': prims})
+    text = json.dumps({'meshes': meshes, 'accessors': accessors, 'bufferViews': views}).encode()
+    text += b' ' * (-len(text) % 4)
+    chunks = struct.pack('<II', len(text), 0x4E4F534A) + text
+    chunks += struct.pack('<II', len(body), 0x004E4942) + body
+    path.write_bytes(struct.pack('<4sII', b'glTF', 2, 12 + len(chunks)) + chunks)
+    return path
+
+
+def _as_lists(face_ids: dict) -> list[list[list[int] | None]]:
+    return [[None if a is None else a.tolist() for a in face_ids[i]] for i in sorted(face_ids)]
+
+
+def test_read_face_ids_repairs_arrays_of_equal_length(tmp_path: Path) -> None:
+    """A later primitive shifts the written pairing, and length alone cannot see it.
+
+    The first mesh has two primitives, so cascadio hands the second mesh the
+    array of the first mesh's second primitive. All three arrays are one
+    length, so only the index accessors tell them apart.
+    """
+    arrays = [[0, 1], [2, 3], [4, 5]]
+    glb = _glb(tmp_path / 'm.glb', [[(0, 3), (1, None)], [(2, 4)]], [2, 2, 2], arrays)
+    assert _as_lists(_read_face_ids(glb)) == [[[0, 1], [2, 3]], [[4, 5]]]
+
+
+def test_read_face_ids_shares_arrays_between_instances(tmp_path: Path) -> None:
+    """Meshes that reuse a primitive's index accessor read the same array."""
+    primitives = [[(0, 2), (1, None)], [(0, 2), (1, None)]]
+    glb = _glb(tmp_path / 'm.glb', primitives, [1, 2], [[7], [8, 9]])
+    assert _as_lists(_read_face_ids(glb)) == [[[7], [8, 9]], [[7], [8, 9]]]
+
+
+def test_read_face_ids_trusts_an_extension_on_every_primitive(tmp_path: Path) -> None:
+    """A writer that tags each primitive itself is read as written, in any accessor order."""
+    glb = _glb(tmp_path / 'm.glb', [[(0, 3), (1, 2)]], [1, 1], [[5], [6]])
+    assert _as_lists(_read_face_ids(glb)) == [[[6], [5]]]
+
+
+def test_read_face_ids_trusts_single_primitive_meshes(tmp_path: Path) -> None:
+    """Without a later primitive nothing shifts, so an untagged mesh stays untagged."""
+    glb = _glb(tmp_path / 'm.glb', [[(0, 2)], [(1, None)]], [1, 1], [[5]])
+    assert _as_lists(_read_face_ids(glb)) == [[[5]], [None]]
+
+
+def test_read_face_ids_without_the_extension(tmp_path: Path) -> None:
+    """A read with no B-rep data has nothing to repair and nothing to warn about."""
+    glb = _glb(tmp_path / 'm.glb', [[(0, None), (1, None)]], [1, 1], [])
+    assert _as_lists(_read_face_ids(glb)) == [[None, None]]
+
+
+@pytest.mark.parametrize(
+    'face_arrays',
+    [[[1], [2, 3, 4]], [[9], [1], [2, 3]]],
+    ids=['array-of-the-wrong-length', 'more-arrays-than-primitives'],
+)
+def test_read_face_ids_refuses_a_layout_it_cannot_pair(
+    tmp_path: Path, face_arrays: list[list[int]]
+) -> None:
+    """An unknown layout tags nothing and says so, rather than tagging the wrong faces."""
+    glb = _glb(tmp_path / 'm.glb', [[(0, 2), (1, None)]], [1, 2], face_arrays)
+    with pytest.warns(CadWarning, match='B-rep face'):
+        face_ids = _read_face_ids(glb)
+    assert _as_lists(face_ids) == [[None, None]]
+
+
+def test_read_face_ids_skips_a_line_primitive_when_repairing(tmp_path: Path) -> None:
+    """A line primitive has no face array, so it takes no rank among the triangles."""
+    primitives = [[(0, None)], [(1, 4), (2, None)], [(3, 5)]]
+    glb = _glb(tmp_path / 'm.glb', primitives, [1, 1, 2, 1], [[6], [7, 8], [9]], lines=(0,))
+    assert _as_lists(_read_face_ids(glb)) == [[None], [[6], [7, 8]], [[9]]]
+
+
+def test_read_face_ids_ignores_an_untagged_later_line_primitive(tmp_path: Path) -> None:
+    """A later line primitive carries no faces, so its missing extension is no sign of a shift."""
+    glb = _glb(
+        tmp_path / 'm.glb', [[(0, 4), (1, None)], [(2, 3)]], [1, 1, 1], [[5], [6]], lines=(1,)
+    )
+    assert _as_lists(_read_face_ids(glb)) == [[[6], None], [[5]]]
+
+
+def test_read_step_cascadio_tags_every_face_beside_a_free_edge() -> None:
+    """A free edge in a multi-color assembly leaves every triangle leaf with its own faces."""
+    pytest.importorskip('cascadio')
+    path = FACE_COLORS_STEP.with_name('assembly_free_edge.step')
+    leaves = list(pyvista_cad.read_step(path, backend='cascadio'))
+    faces = [leaf for leaf in leaves if leaf.n_lines == 0]
+    assert len(leaves) == len(faces) + 1
+    counts = [np.unique(leaf.cell_data['cad.face_id']).size for leaf in faces]
+    assert counts == FACE_COLORS_LEAF_FACES
+
+
+def test_read_face_ids_refuses_an_index_accessor_as_a_face_array(tmp_path: Path) -> None:
+    """Counts can line up by chance, so the arrays must sit after every index accessor."""
+    glb = _glb(tmp_path / 'm.glb', [[(0, 2), (1, None)]], [3, 1], [[7]])
+    with pytest.warns(CadWarning, match='B-rep face'):
+        face_ids = _read_face_ids(glb)
+    assert _as_lists(face_ids) == [[None, None]]
+
+
+def test_read_face_ids_refuses_a_primitive_without_indices(tmp_path: Path) -> None:
+    """Rank needs an index accessor on every primitive; without one nothing is paired."""
+    glb = _glb(tmp_path / 'm.glb', [[(0, 1), (None, None)]], [1], [[1]])
+    with pytest.warns(CadWarning, match='B-rep face'):
+        face_ids = _read_face_ids(glb)
+    assert _as_lists(face_ids) == [[None, None]]
+
+
+def test_read_step_cascadio_tags_every_primitive() -> None:
+    """Every leaf of a multi-color assembly keeps its ids and its own B-rep faces."""
+    pytest.importorskip('cascadio')
+    leaves = list(pyvista_cad.read_step(FACE_COLORS_STEP, backend='cascadio'))
+    assert all('cad.face_id' in leaf.cell_data for leaf in leaves)
+    counts = [np.unique(leaf.cell_data['cad.face_id']).size for leaf in leaves]
+    assert counts == FACE_COLORS_LEAF_FACES
+
+
+def test_read_step_cascadio_face_ids_follow_the_geometry() -> None:
+    """A box leaf has one normal per face id, which a neighbor's array would not give it."""
+    pytest.importorskip('cascadio')
+    leaves = list(pyvista_cad.read_step(FACE_COLORS_STEP, backend='cascadio'))
+    for leaf in leaves[:5]:
+        normals = np.round(leaf.cell_normals, 4)
+        ids = leaf.cell_data['cad.face_id']
+        for face in np.unique(ids):
+            assert np.unique(normals[ids == face], axis=0).shape[0] == 1
+        assert np.unique(normals, axis=0).shape[0] == np.unique(ids).size
+
+
+def test_read_step_cascadio_merge_keeps_every_face() -> None:
+    """A merged read has every B-rep face of every leaf under its own id."""
+    pytest.importorskip('cascadio')
+    merged = pyvista_cad.read_step(FACE_COLORS_STEP, backend='cascadio', merge=True)
+    assert np.unique(merged.cell_data['cad.face_id']).size == sum(FACE_COLORS_LEAF_FACES)
+
+
+def test_read_step_cascadio_edges_after_a_multi_color_part() -> None:
+    """Parts after a multi-color one draw their edges: 12 on a box, 2 circles on a pin."""
+    pytest.importorskip('cascadio')
+    plate, pin = list(pyvista_cad.read_step(FACE_COLORS_STEP, backend='cascadio'))[4:]
+    for part, n_edges in [(plate, 12), (pin, 2)]:
+        edges = pyvista_cad.face_id_edges(part)
+        assert np.unique(edges.cell_data['cad.edge_id']).size == n_edges
