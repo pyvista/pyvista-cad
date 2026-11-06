@@ -36,6 +36,18 @@ Fixtures
     assembly bounds as read: ``(0.0, 30.0, 0.0, 20.0, 0.0,
     35.0)``. Units: mm.
 
+``assembly_face_colors.step``
+    A STEP assembly whose first product has one colored face, so its
+    tessellation splits into two glTF primitives in a cascadio read:
+
+    - ``Housing``: a box 30 x 20 x 10 mm with its first face red, placed
+      twice, the second instance translated by ``(0, 40, 0)``.
+    - ``Plate``: a box 12 x 12 x 2 mm translated by ``(50, 0, 0)``.
+    - ``Pin``: a cylinder radius 4 mm, height 25 mm, translated by
+      ``(80, 0, 0)``.
+
+    Every leaf of the read has a known B-rep face count. Units: mm.
+
 ``dxf_r12.dxf`` / ``dxf_r2018.dxf``
     ezdxf documents in the R12 and R2018 DXF versions. Each carries, on
     named layers:
@@ -204,6 +216,71 @@ def generate_step_assembly() -> str:
 
     # Verify two named products survive a re-read.
     _verify_step_products(path)
+    return path
+
+
+def generate_step_face_colors() -> str:
+    """Write a STEP assembly whose first product has a per-face color."""
+    from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox, BRepPrimAPI_MakeCylinder
+    from OCP.gp import gp_Trsf, gp_Vec
+    from OCP.IFSelect import IFSelect_RetDone
+    from OCP.Interface import Interface_Static
+    from OCP.Quantity import Quantity_Color, Quantity_TOC_RGB
+    from OCP.STEPCAFControl import STEPCAFControl_Writer
+    from OCP.STEPControl import STEPControl_AsIs
+    from OCP.TCollection import TCollection_ExtendedString
+    from OCP.TDataStd import TDataStd_Name
+    from OCP.TDocStd import TDocStd_Document
+    from OCP.TopAbs import TopAbs_FACE
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopLoc import TopLoc_Location
+    from OCP.XCAFApp import XCAFApp_Application
+    from OCP.XCAFDoc import XCAFDoc_ColorSurf, XCAFDoc_DocumentTool
+
+    path = os.path.join(HERE, 'assembly_face_colors.step')
+
+    app = XCAFApp_Application.GetApplication_s()
+    doc = TDocStd_Document(TCollection_ExtendedString('XmlXCAF'))
+    app.InitDocument(doc)
+    shape_tool = XCAFDoc_DocumentTool.ShapeTool_s(doc.Main())
+    color_tool = XCAFDoc_DocumentTool.ColorTool_s(doc.Main())
+
+    housing = BRepPrimAPI_MakeBox(30.0, 20.0, 10.0).Shape()
+    housing_lbl = shape_tool.AddShape(housing, False, True)
+    plate_lbl = shape_tool.AddShape(BRepPrimAPI_MakeBox(12.0, 12.0, 2.0).Shape(), False, True)
+    pin_lbl = shape_tool.AddShape(BRepPrimAPI_MakeCylinder(4.0, 25.0).Shape(), False, True)
+    TDataStd_Name.Set_s(housing_lbl, TCollection_ExtendedString('Housing'))
+    TDataStd_Name.Set_s(plate_lbl, TCollection_ExtendedString('Plate'))
+    TDataStd_Name.Set_s(pin_lbl, TCollection_ExtendedString('Pin'))
+
+    face = TopExp_Explorer(housing, TopAbs_FACE).Current()
+    red = Quantity_Color(1.0, 0.0, 0.0, Quantity_TOC_RGB)
+    color_tool.SetColor(shape_tool.AddSubShape(housing_lbl, face), red, XCAFDoc_ColorSurf)
+
+    root_lbl = shape_tool.NewShape()
+    TDataStd_Name.Set_s(root_lbl, TCollection_ExtendedString('Assembly'))
+    for label, offset in (
+        (housing_lbl, (0.0, 0.0, 0.0)),
+        (housing_lbl, (0.0, 40.0, 0.0)),
+        (plate_lbl, (50.0, 0.0, 0.0)),
+        (pin_lbl, (80.0, 0.0, 0.0)),
+    ):
+        trsf = gp_Trsf()
+        trsf.SetTranslation(gp_Vec(*offset))
+        shape_tool.AddComponent(root_lbl, label, TopLoc_Location(trsf))
+    shape_tool.UpdateAssemblies()
+
+    Interface_Static.SetCVal_s('write.step.schema', 'AP214')
+    Interface_Static.SetCVal_s('write.step.unit', 'MM')
+
+    writer = STEPCAFControl_Writer()
+    writer.Transfer(doc, STEPControl_AsIs)
+    status = writer.Write(path)
+    if status != IFSelect_RetDone:
+        msg = f'STEPCAFControl_Writer.Write failed with status {status}'
+        raise RuntimeError(msg)
+
+    _normalize_step_timestamp(path)
     return path
 
 
@@ -805,14 +882,16 @@ def _record(label: str, path: str) -> None:
 
 if __name__ == '__main__':
     step = generate_step_assembly()
+    step_colors = generate_step_face_colors()
     r12, r2018 = generate_dxf()
     mf = generate_multimaterial_3mf()
     ifc = generate_building_ifc()
     iges = generate_impeller_iges()
     brep = generate_external_brep()
 
-    print('Generated 6 fixtures into', HERE)
+    print('Generated 7 fixtures into', HERE)
     _record('STEP assembly', step)
+    _record('STEP face colors', step_colors)
     _record('DXF R12', r12)
     _record('DXF R2018', r2018)
     _record('3MF multimaterial', mf)

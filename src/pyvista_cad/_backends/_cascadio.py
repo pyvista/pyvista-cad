@@ -12,12 +12,13 @@ import re
 import struct
 import tempfile
 from typing import Any
+import warnings
 
 import numpy as np
 import pyvista as pv
 
 from pyvista_cad._backends._build123d import _detect_step_units
-from pyvista_cad._errors import CadReadError, OptionalDependencyError
+from pyvista_cad._errors import CadReadError, CadWarning, OptionalDependencyError
 
 _METRES_PER_UNIT = {'mm': 1e-3, 'cm': 1e-2, 'm': 1.0, 'inch': 0.0254, 'foot': 0.3048}
 
@@ -116,20 +117,55 @@ def _read_face_ids(glb_path: pathlib.Path) -> dict[int, list[np.ndarray | None]]
     bin_start = 20 + json_len + 8
 
     out: dict[int, list[np.ndarray | None]] = {}
-    for mesh_index, mesh in enumerate(doc.get('meshes', [])):
+    for mesh_index, accessors in enumerate(_face_accessors(doc)):
         prims: list[np.ndarray | None] = []
-        for prim in mesh['primitives']:
-            ext = prim.get('extensions', {}).get('TM_brep_faces')
-            if ext is None:
+        for accessor in accessors:
+            if accessor is None:
                 prims.append(None)
                 continue
-            acc = doc['accessors'][ext['faceIndices']]
+            acc = doc['accessors'][accessor]
             view = doc['bufferViews'][acc['bufferView']]
             start = bin_start + view.get('byteOffset', 0) + acc.get('byteOffset', 0)
             dtype = _INDEX_DTYPES[acc['componentType']]
             prims.append(np.frombuffer(data, dtype, acc['count'], start).astype(np.int64))
         out[mesh_index] = prims
     return out
+
+
+def _face_accessors(doc: dict[str, Any]) -> list[list[int | None]]:
+    """Accessor of each primitive's face indices, one list per glTF mesh.
+
+    cascadio 0.1.1 ranks only each mesh's first primitive, so a mesh with
+    several primitives hands every following mesh a neighbor's array. Such a
+    file is paired by ``indices`` accessor rank, checked against triangle counts.
+    """
+    meshes = [mesh['primitives'] for mesh in doc.get('meshes', [])]
+    written: list[list[int | None]] = [
+        [prim.get('extensions', {}).get('TM_brep_faces', {}).get('faceIndices') for prim in prims]
+        for prims in meshes
+    ]
+    present = [index for indices in written for index in indices if index is not None]
+    # A writer that tags every later primitive needs no repair, so this function can then go.
+    if not present or all(index is not None for indices in written for index in indices[1:]):
+        return written
+
+    accessors = doc['accessors']
+    keys = {prim.get('indices') for prims in meshes for prim in prims}
+    if None not in keys:
+        first = min(present)
+        rank = {key: first + i for i, key in enumerate(sorted(keys))}
+        if len(accessors) - first == len(keys) and all(
+            3 * accessors[face]['count'] == accessors[key]['count'] for key, face in rank.items()
+        ):
+            return [[rank[prim['indices']] for prim in prims] for prims in meshes]
+
+    warnings.warn(
+        'cascadio B-rep face indices could not be paired with their primitives; '
+        'reading without cad.face_id.',
+        CadWarning,
+        stacklevel=2,
+    )
+    return [[None] * len(prims) for prims in meshes]
 
 
 def _tag_face_ids(obj: Any, face_ids: dict[int, list[np.ndarray | None]]) -> None:
