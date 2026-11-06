@@ -21,8 +21,8 @@ os.environ['PYVISTA_BUILDING_GALLERY'] = 'true'
 
 project = 'pyvista-cad'
 year = dt.datetime.now(dt.UTC).year
-copyright = f'2026-{year}, The PyVista Developers'  # noqa: A001
-author = 'The PyVista Developers'
+copyright = f'2026-{year}, CoDimensional PBC'  # noqa: A001
+author = 'CoDimensional PBC'
 try:
     release = get_version('pyvista-cad').removesuffix('+dirty')
 except PackageNotFoundError:

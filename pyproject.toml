@@ -9,7 +9,7 @@ description = 'PyVista accessor and reader-registry plugin for CAD formats (STEP
 readme = 'README.md'
 license = 'MIT'
 requires-python = '>=3.10'
-authors = [{ name = 'The PyVista Developers', email = 'info@pyvista.org' }]
+authors = [{ name = 'CoDimensional PBC', email = 'hello@codimensional.com' }]
 classifiers = [
   'Development Status :: 3 - Alpha',
   'Intended Audience :: Developers',

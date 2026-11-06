@@ -2,6 +2,8 @@
 
 CAD format reading, writing, and CAD-style plotting for [PyVista](https://github.com/pyvista/pyvista).
 
+Built and maintained by [CoDimensional PBC](https://codimensional.com).
+
 `pyvista-cad` adds STEP, IGES, BREP, DXF, 3MF, IFC, FreeCAD `.fcstd`,
 OpenSCAD `.scad`, and glTF support to PyVista. It registers a `.cad`
 accessor plus reader entries on `pv.read(...)`. No monkey-patching. No
