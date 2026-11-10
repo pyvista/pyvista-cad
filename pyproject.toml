@@ -140,7 +140,7 @@ cad = 'pyvista_cad._cad_view'
 
 [project.urls]
 Homepage = 'https://github.com/pyvista/pyvista-cad'
-Documentation = 'https://pyvista.github.io/pyvista-cad/'
+Documentation = 'https://cad.pyvista.org/'
 Issues = 'https://github.com/pyvista/pyvista-cad/issues'
 Repository = 'https://github.com/pyvista/pyvista-cad'
 
