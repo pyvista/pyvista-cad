@@ -15,14 +15,14 @@
 
 <p align="center">
   <a href="https://pypi.org/project/pyvista-cad/"><img src="https://img.shields.io/pypi/v/pyvista-cad" alt="PyPI"></a>
-  <a href="https://github.com/pyvista/pyvista-cad/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/pyvista/pyvista-cad/ci.yml?branch=main" alt="CI"></a>
+  <a href="https://github.com/codimensional/pyvista-cad/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/codimensional/pyvista-cad/ci.yml?branch=main" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
 Built and maintained by [CoDimensional PBC](https://codimensional.com).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pyvista/pyvista-cad/main/doc/_static/hero.png" alt="The same flange shown two ways: a generic mesh viewer drawing the raw triangulation on the left, and pyvista-cad drawing smoothly shaded faces with the model's topological edges on the right." width="90%">
+  <img src="https://raw.githubusercontent.com/codimensional/pyvista-cad/main/doc/_static/hero.png" alt="The same flange shown two ways: a generic mesh viewer drawing the raw triangulation on the left, and pyvista-cad drawing smoothly shaded faces with the model's topological edges on the right." width="90%">
 </p>
 
 `pyvista-cad` adds CAD-format support to PyVista: STEP, IGES, BREP, DXF, 3MF, IFC, FreeCAD `.fcstd`, OpenSCAD `.scad`, and glTF. It registers a `.cad` accessor on every `pv.DataSet` / `pv.MultiBlock` and wires reader entries into `pv.read(...)`. It also adds CAD-style rendering: smoothly shaded faces with the model's topological B-rep edges instead of triangle-mesh noise, via `.cad.plot()` and a `plotter.cad` component. No monkey-patching, no forks, no direct VTK calls.
@@ -68,7 +68,7 @@ layers = floorplan.cad.split_by_layer()  # MultiBlock keyed on layer
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pyvista/pyvista-cad/main/doc/_static/readme_quickstart.png" alt="Two independent example fixtures. Left: a STEP part read with pv.read, drawn CAD-style with shaded faces and topological edges. Right: a DXF drawing split into colored per-layer blocks (body, centerlines, dimensions, holes)." width="90%">
+  <img src="https://raw.githubusercontent.com/codimensional/pyvista-cad/main/doc/_static/readme_quickstart.png" alt="Two independent example fixtures. Left: a STEP part read with pv.read, drawn CAD-style with shaded faces and topological edges. Right: a DXF drawing split into colored per-layer blocks (body, centerlines, dimensions, holes)." width="90%">
 </p>
 
 ## CAD-friendly plotting
@@ -93,7 +93,7 @@ pl.show()
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pyvista/pyvista-cad/main/doc/_static/readme_cad_plotting.png" alt="The NIST AM Bench specimen. Left: cad.plot draws shaded faces with topological B-rep edges. Right: the same cached block colored by a height scalar with the viridis colormap, the topological edges still drawn." width="90%">
+  <img src="https://raw.githubusercontent.com/codimensional/pyvista-cad/main/doc/_static/readme_cad_plotting.png" alt="The NIST AM Bench specimen. Left: cad.plot draws shaded faces with topological B-rep edges. Right: the same cached block colored by a height scalar with the viridis colormap, the topological edges still drawn." width="90%">
 </p>
 
 `.cad.plot()` and the `plotter.cad` component accept a `MultiBlock`, `PolyData`, raw `TopoDS`, or a build123d / cadquery object; a plain mesh with no B-rep origin degrades to crease feature edges.
