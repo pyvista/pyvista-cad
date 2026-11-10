@@ -74,7 +74,7 @@ html_css_files = ['theme_overrides.css']
 
 html_context = {
     'github_url': 'https://github.com',
-    'github_user': 'pyvista',
+    'github_user': 'codimensional',
     'github_repo': 'pyvista-cad',
     'github_version': 'main',
     'doc_path': 'doc',
@@ -85,7 +85,7 @@ html_theme_options = {
     'icon_links': [
         {
             'name': 'GitHub',
-            'url': 'https://github.com/pyvista/pyvista-cad',
+            'url': 'https://github.com/codimensional/pyvista-cad',
             'icon': 'fa-brands fa-github',
         },
         {
@@ -97,7 +97,7 @@ html_theme_options = {
     'navigation_with_keys': False,
     'path_to_docs': 'doc',
     'repository_branch': 'main',
-    'repository_url': 'https://github.com/pyvista/pyvista-cad',
+    'repository_url': 'https://github.com/codimensional/pyvista-cad',
     'show_prev_next': True,
     'show_toc_level': 3,
     'toc_title': 'On this page',
@@ -160,6 +160,6 @@ copybutton_prompt_text = r'>>> |\.\.\. |\$ '
 copybutton_prompt_is_regexp = True
 
 linkcheck_ignore = [
-    r'https://github.com/pyvista/pyvista-cad/issues/\d+',
+    r'https://github.com/codimensional/pyvista-cad/issues/\d+',
 ]
 linkcheck_timeout = 15
